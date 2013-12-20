@@ -1,4 +1,4 @@
-package irclibrary
+package irclib
 
 import (
 	"errors"

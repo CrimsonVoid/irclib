@@ -1,7 +1,7 @@
-package irclibrary
+package irclib
 
 import (
-	"github.com/crimsonvoid/irclibrary/module"
+	"github.com/crimsonvoid/irclib/module"
 	irc "github.com/fluffle/goirc/client"
 )
 

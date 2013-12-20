@@ -1,4 +1,4 @@
-package irclibrary
+package irclib
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/crimsonvoid/console"
-	"github.com/crimsonvoid/irclibrary/module"
+	"github.com/crimsonvoid/irclib/module"
 )
 
 func init() {
