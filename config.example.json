@@ -1,0 +1,27 @@
+{
+    "Nick":  "",
+    "Ident": "",
+    "Name":  "",
+
+    "Pass":     "",
+    "SSL":      false,
+    "Server":   "",
+    "Port":     7000,
+    "PingFreq": 0,
+    "SplitLen": 0,
+    "Flood":    false,
+
+    "Version":     "",
+    "QuitMessage": "",
+
+    "Botinfo": {
+        "Chans": [ "#" ],
+        
+        "Access": {
+            "admin": [ "" ],
+            "op": [ "" ],
+            "blacklist": [ "" ],
+            "...": [ "" ]
+        }
+    }
+}

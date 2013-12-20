@@ -1,0 +1,12 @@
+{
+	"name":        "YourModule",
+	"description": "Short description",
+	"logdir":      "./logs/",
+	"enabled":     true,
+
+	"DenyUser":  [],
+	"AllowUser": [],
+
+	"DenyChan":  [],
+	"AllowChan": []
+}
