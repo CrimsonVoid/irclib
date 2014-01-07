@@ -32,7 +32,6 @@ func remove(list *[]string, target string) error {
 		}
 
 		copy((*list)[i:], (*list)[i+1:])
-		(*list)[len(*list)-1] = ""
 		(*list) = (*list)[:len(*list)-1]
 
 		return nil

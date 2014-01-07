@@ -33,29 +33,25 @@ func newCore() *module.Module {
 }
 
 func (self *ModManager) registerCoreCommands() {
-	// Quit
-	if err := self.regCoreQuit(); err != nil {
-		panic(err)
+	errs := []error{
+		// Quit
+		self.regCoreQuit(),
+		// Force quit, optional module name
+		self.regCoreForceQuit(),
+		// List modules
+		self.regCoreListModules(),
+		// Join or Part channels
+		self.regCoreChanManage(),
+		// Print access list
+		self.regCoreAccessList(),
+		// Add or remove nicks from access list
+		self.regCoreAccessManip(),
 	}
-	// Force quit, optional module name
-	if err := self.regCoreForceQuit(); err != nil {
-		panic(err)
-	}
-	// List modules
-	if err := self.regCoreListModules(); err != nil {
-		panic(err)
-	}
-	// Join or Part channels
-	if err := self.regCoreChanManage(); err != nil {
-		panic(err)
-	}
-	// Print access list
-	if err := self.regCoreAccessList(); err != nil {
-		panic(err)
-	}
-	// Add or remove nicks from access list
-	if err := self.regCoreAccessManip(); err != nil {
-		panic(err)
+
+	for _, err := range errs {
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 

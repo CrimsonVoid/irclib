@@ -14,32 +14,22 @@ func init() {
 
 // Register commands, logs errors, and continues
 func (self *Module) registerBaseCommands() {
-	if err := self.registerInfo(); err != nil {
-		self.Logger.Errorln(err)
+	registerErrors := []error{
+		self.registerInfo(),
+		self.registerAdd(),
+		self.registerRem(),
+		self.registerClear(),
+		self.registerList(),
+		self.registerEnable(),
+		self.registerLogs(),
+		self.registerLogs2(),
+		self.registerClearLogs(),
 	}
-	if err := self.registerAdd(); err != nil {
-		self.Logger.Errorln(err)
-	}
-	if err := self.registerRem(); err != nil {
-		self.Logger.Errorln(err)
-	}
-	if err := self.registerClear(); err != nil {
-		self.Logger.Errorln(err)
-	}
-	if err := self.registerList(); err != nil {
-		self.Logger.Errorln(err)
-	}
-	if err := self.registerEnable(); err != nil {
-		self.Logger.Errorln(err)
-	}
-	if err := self.registerLogs(); err != nil {
-		self.Logger.Errorln(err)
-	}
-	if err := self.registerLogs2(); err != nil {
-		self.Logger.Errorln(err)
-	}
-	if err := self.registerClearLogs(); err != nil {
-		self.Logger.Errorln(err)
+
+	for _, err := range registerErrors {
+		if err != nil {
+			self.Logger.Errorln(err)
+		}
 	}
 }
 
@@ -58,10 +48,10 @@ func (self *Module) registerInfo() error {
 			strOut = "\n\t" + self.String() + "\n"
 		}
 
-		unAU, allUsr := self.GetROAllowed(User)
-		unAC, allChn := self.GetROAllowed(Chan)
-		unDU, denUsr := self.GetRODenyed(User)
-		unDC, denChn := self.GetRODenyed(Chan)
+		unAU, alwUsr := self.GetROAllowed(User)
+		unAC, alwChn := self.GetROAllowed(Chan)
+		unDU, dnyUsr := self.GetRODenyed(User)
+		unDC, dnyChn := self.GetRODenyed(Chan)
 
 		log.Printf("%v%v\x1b[0m\n\t%v\n%v"+
 			"\n\tIRC Commands\n\t\t%v"+
@@ -77,7 +67,7 @@ func (self *Module) registerInfo() error {
 			strOut,
 			strings.Join(self.StringCommands(), "\n\t\t"),
 			strings.Join(self.Console.String(), "\n\t\t"),
-			*allUsr, *denUsr, *allChn, *denChn)
+			alwUsr, dnyUsr, alwChn, dnyChn)
 
 		// Unlock
 		unAU <- true
@@ -99,24 +89,30 @@ func (self *Module) registerAdd() error {
 		// Can ignore error since match is already guaranteed
 		groups, _ := matchGroups(re, s)
 		nick := groups["nick"]
+		var (
+			err    error
+			errMsg string
+			msg    string
+		)
 
-		if groups["mode"] == "allow" {
-			if err := self.Allow(nick); err != nil {
-				self.Logger.Errorln("Module.registerAdd()", err.Error())
-				log.Printf("Error allowing %v: %v\n", nick, err)
-			} else {
-				self.Logger.Infoln("Allowed", nick)
-				log.Println("Allowed", nick)
-			}
-		} else { // "deny"
-			if err := self.Deny(nick); err != nil {
-				self.Logger.Errorln("Module.registerAdd()", err.Error())
-				log.Printf("Error blocking %v: %v\n", nick, err)
-			} else {
-				self.Logger.Infoln("Blocked", nick)
-				log.Println("Blocked", nick)
-			}
+		switch groups["mode"] {
+		case "allow":
+			err = self.Allow(nick)
+			errMsg = "allowing"
+		default: // case "deny":
+			err = self.Deny(nick)
+			errMsg = "blocking"
 		}
+
+		if err != nil {
+			self.Logger.Errorln("Module.registerAdd()", err.Error())
+			log.Printf("Error %v %v: %v\n", errMsg, nick, err)
+
+			return
+		}
+
+		self.Logger.Infoln(msg, nick)
+		log.Println(msg, nick)
 	})
 
 	return err
@@ -132,24 +128,29 @@ func (self *Module) registerRem() error {
 		// Can ignore error since match is already guaranteed
 		groups, _ := matchGroups(re, s)
 		nick := groups["nick"]
+		var (
+			err    error
+			errMsg string
+		)
 
-		if groups["mode"] == "allow" {
-			if err := self.RemAllowed(nick); err != nil {
-				self.Logger.Errorln("Module.registerRem()", err.Error())
-				log.Printf("Error removing %v from allowed: %v\n", nick, err)
-			} else {
-				self.Logger.Infoln("Removed", nick)
-				log.Println("Removed", nick)
-			}
-		} else { // "deny"
-			if err := self.RemDenyed(nick); err != nil {
-				self.Logger.Errorln("Module.registerRem()", err.Error())
-				log.Printf("Error removing %v from denied: %v\n", nick, err)
-			} else {
-				self.Logger.Infoln("Removed", nick)
-				log.Println("Removed", nick)
-			}
+		switch groups["mode"] {
+		case "allow":
+			err = self.RemAllowed(nick)
+			errMsg = "allowed"
+		default: // case "deny":
+			err = self.RemDenyed(nick)
+			errMsg = "denied"
 		}
+
+		if err != nil {
+			self.Logger.Errorln("Module.registerRem()", err.Error())
+			log.Printf("Error removing %v from %v: %v\n", nick, errMsg, err)
+
+			return
+		}
+
+		self.Logger.Infoln("Removed", nick)
+		log.Println("Removed", nick)
 	})
 
 	return err
@@ -164,28 +165,29 @@ func (self *Module) registerClear() error {
 
 		// Can ignore error since match is already guaranteed
 		groups, _ := matchGroups(re, s)
+		msg := ""
 
-		if groups["mode"] == "allow" {
+		switch groups["mode"] {
+		case "allow":
 			if groups["type"] == "user" {
 				self.ClearAllowed(User)
-				self.Logger.Infoln("Cleared allowUser list")
-				log.Println("Cleared allowUser list")
+				msg = "Cleared allowUser list"
 			} else { // "chan"
 				self.ClearAllowed(Chan)
-				self.Logger.Infoln("Cleared allowChan list")
-				log.Println("Cleared allowChan list")
+				msg = "Cleared allowChan list"
 			}
-		} else { // "deny"
+		default: // case "deny":
 			if groups["type"] == "user" {
 				self.ClearDenyed(User)
-				self.Logger.Infoln("Cleared denyUser list")
-				log.Println("Cleared denyUser list")
+				msg = "Cleared denyUser list"
 			} else { // "chan"
 				self.ClearDenyed(Chan)
-				self.Logger.Infoln("Cleared denyChan list")
-				log.Println("Cleared denyChan list")
+				msg = "Cleared denyChan list"
 			}
 		}
+
+		self.Logger.Infoln(msg)
+		log.Println(msg)
 	})
 
 	return err
@@ -200,32 +202,33 @@ func (self *Module) registerList() error {
 
 		// Can ignore error since match is already guaranteed
 		groups, _ := matchGroups(re, s)
+		var (
+			unlock chan<- bool
+			list   []string
+			msg    string
+		)
 
-		if groups["mode"] == "allow" {
+		switch groups["mode"] {
+		case "allow":
 			if groups["type"] == "user" {
-				unlock, list := self.GetROAllowed(User)
-				log.Println("Allowed users:", *list)
-
-				unlock <- true
+				unlock, list = self.GetROAllowed(User)
+				msg = "Allowed users:"
 			} else { // "chan"
-				unlock, list := self.GetRODenyed(Chan)
-				log.Println("Allowed channels:", *list)
-
-				unlock <- true
+				unlock, list = self.GetRODenyed(Chan)
+				msg = "Allowed channels:"
 			}
-		} else { // "deny"
+		default: // case "deny":
 			if groups["type"] == "user" {
-				unlock, list := self.GetRODenyed(User)
-
-				log.Println("Denyed users:", *list)
-				unlock <- true
+				unlock, list = self.GetRODenyed(User)
+				msg = "Denyed users:"
 			} else { // "chan"
-				unlock, list := self.GetRODenyed(Chan)
-
-				log.Println("Denyed channels:", *list)
-				unlock <- true
+				unlock, list = self.GetRODenyed(Chan)
+				msg = "Denyed channels:"
 			}
 		}
+
+		log.Println(msg, list)
+		unlock <- true
 	})
 
 	return err
@@ -239,17 +242,19 @@ func (self *Module) registerEnable() error {
 		s = strings.ToLower(s)
 
 		groups, _ := matchGroups(re, s)
+		status := ""
 
 		switch groups["cmd"] {
 		case "en":
 			self.Enable()
-			self.Logger.Infoln("Enabled", self.Name())
-			log.Println("Enabled", self.Name())
-		case "dis":
+			status = "Enabled"
+		default: // case "dis":
 			self.Disable()
-			self.Logger.Infoln("Disabled", self.Name())
-			log.Println("Disabled", self.Name())
+			status = "Disabled"
 		}
+
+		self.Logger.Infoln(status, self.Name())
+		log.Println(status, self.Name())
 	})
 
 	return err

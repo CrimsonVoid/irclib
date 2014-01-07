@@ -138,64 +138,30 @@ func (self *moduleConfig) GetDenyed(u UserChan) []string {
 // the user to not modify the slice and enforced by a RLock() on the slice. The
 // lock is released and slice pointer set to nil when a boolean value is sent on
 // the returned channel
-func (self *moduleConfig) GetROAllowed(u UserChan) (chan<- bool, *[]string) {
-	unlock := make(chan bool)
-	var list []string
-	var mut *sync.RWMutex
-
+func (self *moduleConfig) GetROAllowed(u UserChan) (chan<- bool, []string) {
 	switch u {
 	case User:
-		self.userMut.RLock()
-		mut = &self.userMut
-
-		list = self.allowUser
+		return roLock(&self.userMut), self.allowUser
 	case Chan:
-		self.chanMut.RLock()
-		mut = &self.chanMut
-
-		list = self.allowChan
+		return roLock(&self.chanMut), self.allowChan
+	default:
+		return nil, nil
 	}
-
-	go func() {
-		<-unlock
-		list = nil
-
-		mut.RUnlock()
-	}()
-
-	return unlock, &list
 }
 
 // Returns a pointer of the slice header to avoid copies. This is a promise by
 // the user to not modify the slice and enforced by a RLock() on the slice. The
 // lock is released and slice pointer set to nil when a boolean value is sent on
 // the returned channel
-func (self *moduleConfig) GetRODenyed(u UserChan) (chan<- bool, *[]string) {
-	unlock := make(chan bool)
-	var list []string
-	var mut *sync.RWMutex
-
+func (self *moduleConfig) GetRODenyed(u UserChan) (chan<- bool, []string) {
 	switch u {
 	case User:
-		self.userMut.RLock()
-		mut = &self.userMut
-
-		list = self.denyUser
+		return roLock(&self.userMut), self.denyUser
 	case Chan:
-		self.chanMut.RLock()
-		mut = &self.chanMut
-
-		list = self.denyChan
+		return roLock(&self.chanMut), self.denyChan
+	default:
+		return nil, nil
 	}
-
-	go func() {
-		<-unlock
-		list = nil
-
-		mut.RUnlock()
-	}()
-
-	return unlock, &list
 }
 
 // Clears allow(User|Chan) slices
@@ -298,4 +264,17 @@ func (self *moduleConfig) LenDenyed(u UserChan) int {
 
 		return len(self.denyChan)
 	}
+}
+
+func roLock(mu *sync.RWMutex) chan<- bool {
+	unlock := make(chan bool)
+	mu.RLock()
+
+	go func() {
+		<-unlock
+
+		mu.RUnlock()
+	}()
+
+	return unlock
 }
