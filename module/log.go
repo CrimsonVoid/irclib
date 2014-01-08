@@ -136,7 +136,7 @@ func (me *Logger) start() {
 			me.logger.Print(msg.message)
 			me.addLog(msg)
 		case <-me.quit:
-			me.quit = nil
+			defer func() { me.quit = nil }()
 			// Write out pending logs
 			msgRead := 0
 			for msgRead < len(me.prioMsg) {

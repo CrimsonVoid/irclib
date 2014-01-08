@@ -40,7 +40,7 @@ const (
 // is called. This is export primarily for the use of irclibrary and should not
 // need to be modified by the user
 var (
-	Events    = make([]Event, 0, 3)
+	Events    = make([]Event, 0, 5)
 	eventsMut sync.RWMutex
 )
 

@@ -19,7 +19,7 @@ import (
 
 type re struct {
 	trigger *regexp.Regexp
-	fn      func(*irc.Conn, *irc.Line)
+	fn      func(*irc.Line)
 }
 
 type eventTrigger struct {
@@ -30,6 +30,9 @@ type eventTrigger struct {
 // Module repersents the state of the module
 type Module struct {
 	moduleConfig
+
+	// IRC Connection. Conn is not assigned until it is registered
+	Conn *irc.Conn
 
 	// Connect functions to call before or after IRC connection
 	// Disconnect is called after disconnected from IRC
@@ -43,7 +46,7 @@ type Module struct {
 	file    *os.File      // File to write logs to
 	bufFile *bufio.Writer // Buffered writer of Module.file
 
-	stTriggers   map[eventTrigger][]func(*irc.Conn, *irc.Line)
+	stTriggers   map[eventTrigger][]func(*irc.Line)
 	reTriggers   map[Event][]*re
 	stMut, reMut sync.RWMutex
 
@@ -102,10 +105,10 @@ func (self *ModuleInfo) NewModule() (*Module, error) {
 		self.LogDir = self.LogDir + "/"
 	}
 
-	toLowerSlice(&self.AllowUser)
-	toLowerSlice(&self.DenyUser)
-	toLowerSlice(&self.AllowChan)
-	toLowerSlice(&self.DenyChan)
+	toLowerSlice(self.AllowUser)
+	toLowerSlice(self.DenyUser)
+	toLowerSlice(self.AllowChan)
+	toLowerSlice(self.DenyChan)
 
 	mod := &Module{
 		moduleConfig: moduleConfig{
@@ -120,7 +123,7 @@ func (self *ModuleInfo) NewModule() (*Module, error) {
 			denyChan:  self.DenyChan,
 		},
 
-		stTriggers: make(map[eventTrigger][]func(*irc.Conn, *irc.Line)),
+		stTriggers: make(map[eventTrigger][]func(*irc.Line)),
 		reTriggers: make(map[Event][]*re),
 		Console:    newConsole(),
 	}
@@ -246,7 +249,7 @@ func (self *Module) ForceExit() []error {
 
 // Register a function that is called when an Event of eventMode is triggered and
 // trigger equals input. trigger is lowered before registering.
-func (self *Module) Register(trigger string, eventMode Event, fn func(*irc.Conn, *irc.Line)) {
+func (self *Module) Register(trigger string, eventMode Event, fn func(*irc.Line)) {
 	trigger = strings.ToLower(trigger)
 	eventMode = Event(strings.ToUpper(string(eventMode)))
 	appendEvent(eventMode)
@@ -262,7 +265,7 @@ func (self *Module) Register(trigger string, eventMode Event, fn func(*irc.Conn,
 
 // Register a function that is called when an Event of eventMode is triggered and
 // trigger equals input.
-func (self *Module) RegisterRegexp(trigger *regexp.Regexp, eventMode Event, fn func(*irc.Conn, *irc.Line)) {
+func (self *Module) RegisterRegexp(trigger *regexp.Regexp, eventMode Event, fn func(*irc.Line)) {
 	eventMode = Event(strings.ToUpper(string(eventMode)))
 	appendEvent(eventMode)
 
@@ -281,7 +284,7 @@ func (self *Module) RegisterRegexp(trigger *regexp.Regexp, eventMode Event, fn f
 
 // Handles triggers if module is enabled and user/chan is allowed. This is mainly
 // exported for use by library and should not have to be called by the user
-func (self *Module) Handle(trigger string, eventMode Event, con *irc.Conn, line *irc.Line) {
+func (self *Module) Handle(trigger string, eventMode Event, line *irc.Line) {
 	// Filtered by: denyUser, allowUser, denyChan, allowChan
 	if !self.Enabled() ||
 		self.InDenyed(line.Nick) ||
@@ -296,11 +299,11 @@ func (self *Module) Handle(trigger string, eventMode Event, con *irc.Conn, line 
 
 	eventMode = Event(strings.ToUpper(string(eventMode)))
 
-	go self.handleString(trigger, eventMode, con, line)
-	go self.handleRegexp(trigger, eventMode, con, line)
+	go self.handleString(trigger, eventMode, line)
+	go self.handleRegexp(trigger, eventMode, line)
 }
 
-func (self *Module) handleString(trigger string, eventMode Event, con *irc.Conn, line *irc.Line) {
+func (self *Module) handleString(trigger string, eventMode Event, line *irc.Line) {
 	trigger = strings.ToLower(trigger)
 	evT := eventTrigger{eventMode, trigger}
 
@@ -308,17 +311,17 @@ func (self *Module) handleString(trigger string, eventMode Event, con *irc.Conn,
 	defer self.stMut.RUnlock()
 
 	for _, fn := range self.stTriggers[evT] {
-		go fn(con, line.Copy())
+		go fn(line.Copy())
 	}
 }
 
-func (self *Module) handleRegexp(trigger string, eventMode Event, con *irc.Conn, line *irc.Line) {
+func (self *Module) handleRegexp(trigger string, eventMode Event, line *irc.Line) {
 	self.reMut.RLock()
 	defer self.reMut.RUnlock()
 
 	for _, reM := range self.reTriggers[eventMode] {
 		if reM.trigger.FindStringSubmatch(trigger) != nil {
-			go reM.fn(con, line.Copy())
+			go reM.fn(line.Copy())
 		}
 	}
 }
@@ -363,7 +366,7 @@ func (self *Module) createLogger() error {
 
 	self.file = file
 	self.bufFile = bufio.NewWriter(self.file)
-	self.Logger = newLogger(self.bufFile, "", Lpriority|LstdFlags, Perror)
+	self.Logger = newLogger(self.bufFile, "", Lpriority|LstdFlags, Pinfo)
 	go self.Logger.start()
 
 	return nil

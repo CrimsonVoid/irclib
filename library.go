@@ -88,7 +88,12 @@ func NewManager(serverInfo *ServerInfo) (*ModManager, error) {
 // the same name is already registered an error is returned
 func (self *ModManager) Register(mod *module.Module) error {
 	name := mod.Name()
-	if name == "core" {
+
+	if mod.Conn != nil {
+		return errors.New("Module is registered with a ModManager")
+	}
+
+	if name == self.core.Name() {
 		return errors.New("Module name is already registered")
 	}
 
@@ -101,6 +106,7 @@ func (self *ModManager) Register(mod *module.Module) error {
 		}
 	}
 
+	mod.Conn = self.Conn
 	self.modules = append(self.modules, mod)
 
 	return nil
@@ -208,6 +214,7 @@ func (self *ModManager) Disconnect() map[string]error {
 
 			err := mod.Exit()
 			if err == nil {
+				mod.Conn = nil
 				return
 			}
 
@@ -235,7 +242,11 @@ func (self *ModManager) Disconnect() map[string]error {
 	if err := self.core.Exit(); err != nil {
 		log.Println("Core breach! Unsuccessful Exit():", err)
 		errMap["core"] = err
+
+		return errMap
 	}
+
+	self.core.Conn = nil
 	self.cons.Stop()
 	self.Conn.Quit()
 
@@ -256,6 +267,7 @@ func (self *ModManager) ForceDisconnect() map[string][]error {
 
 			err := mod.ForceExit()
 			if err == nil {
+				mod.Conn = nil
 				return
 			}
 
@@ -284,7 +296,10 @@ func (self *ModManager) ForceDisconnect() map[string][]error {
 	if err := self.core.ForceExit(); err != nil {
 		log.Println("Core breach! unsuccessful ForceExit():", err)
 		errMap["core"] = err
+
 	}
+
+	self.core.Conn = nil
 	self.cons.Stop()
 	self.Conn.Quit()
 
@@ -295,7 +310,13 @@ func (self *ModManager) ForceDisconnect() map[string][]error {
 func (self *ModManager) ForceDisconnectModule(modName string) []error {
 	for _, mod := range self.modules {
 		if mod.Name() == modName {
-			return mod.ForceExit()
+			err := mod.ForceExit()
+
+			if err == nil {
+				mod.Conn = nil
+			}
+
+			return err
 		}
 	}
 

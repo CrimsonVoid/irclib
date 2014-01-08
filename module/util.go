@@ -83,8 +83,8 @@ func matchGroups(reg *regexp.Regexp, s string) (map[string]string, error) {
 	return groups, nil
 }
 
-func toLowerSlice(list *[]string) {
-	for i, str := range *list {
-		(*list)[i] = strings.ToLower(str)
+func toLowerSlice(list []string) {
+	for i, str := range list {
+		list[i] = strings.ToLower(str)
 	}
 }

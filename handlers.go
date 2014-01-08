@@ -27,17 +27,17 @@ func (self *ModManager) setupHandlers() {
 		event := string(events[i])
 
 		self.Conn.HandleFunc(event, func(con *irc.Conn, line *irc.Line) {
-			go self.run(event, con, line)
+			go self.run(event, line)
 		})
 	}
 }
 
-func (self *ModManager) run(event string, con *irc.Conn, line *irc.Line) {
+func (self *ModManager) run(event string, line *irc.Line) {
 	self.mut.RLock()
 	defer self.mut.RUnlock()
 
 	for _, mod := range self.modules {
 		// Module should check if enabled, not handlers
-		go mod.Handle(line.Text(), module.Event(event), con, line)
+		go mod.Handle(line.Text(), module.Event(event), line)
 	}
 }
