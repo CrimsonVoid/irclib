@@ -25,6 +25,10 @@ func newCore() *module.Module {
 		panic(err)
 	}
 
+	if err := core.PreStart(); err != nil {
+		panic(err)
+	}
+
 	if err := core.Start(); err != nil {
 		panic(err)
 	}
@@ -33,6 +37,8 @@ func newCore() *module.Module {
 }
 
 func (self *ModManager) registerCoreCommands() {
+	self.core.Conn = self.Conn
+
 	errs := []error{
 		// Quit
 		self.regCoreQuit(),

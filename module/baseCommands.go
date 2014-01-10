@@ -171,23 +171,23 @@ func (self *Module) registerClear() error {
 		case "allow":
 			if groups["type"] == "user" {
 				self.ClearAllowed(User)
-				msg = "Cleared allowUser list"
+				msg = "allowUser"
 			} else { // "chan"
 				self.ClearAllowed(Chan)
-				msg = "Cleared allowChan list"
+				msg = "allowChan"
 			}
 		default: // case "deny":
 			if groups["type"] == "user" {
 				self.ClearDenyed(User)
-				msg = "Cleared denyUser list"
+				msg = "denyUser"
 			} else { // "chan"
 				self.ClearDenyed(Chan)
-				msg = "Cleared denyChan list"
+				msg = "denyChan"
 			}
 		}
 
-		self.Logger.Infoln(msg)
-		log.Println(msg)
+		self.Logger.Infof("Cleared %v list\n", msg)
+		log.Printf("Cleared %v list\n", msg)
 	})
 
 	return err

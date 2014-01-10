@@ -141,6 +141,9 @@ func (self *ModuleInfo) NewModule() (*Module, error) {
 // user. Error is non-nil if a logger could not be created or Preconnect() returned
 // an error; errors returned by Preconnect() are logged
 func (self *Module) PreStart() error {
+	self.mu.Lock()
+	defer self.mu.Unlock()
+
 	if self.file == nil || self.bufFile == nil {
 		if err := self.createLogger(); err != nil {
 			log.Println(self.Name(), "error creating log file", err)
@@ -149,15 +152,16 @@ func (self *Module) PreStart() error {
 		}
 	}
 
-	if self.Preconnect != nil {
-		if err := self.Preconnect(); err != nil {
-			self.Logger.Errorln(err)
-
-			return err
-		}
+	if self.Preconnect == nil {
+		return nil
 	}
 
-	return nil
+	err := self.Preconnect()
+	if err != nil {
+		self.Logger.Errorln(err)
+	}
+
+	return err
 }
 
 // Creates a Logger if necessay and calls Connet() if applicable. This is
@@ -165,8 +169,11 @@ func (self *Module) PreStart() error {
 // user. Error is non-nil if a logger could not be created, module is already
 // running or Connect() returned an error; errors returned by Connect() are logged
 func (self *Module) Start() error {
+	self.mu.Lock()
+	defer self.mu.Unlock()
+
 	if self.running {
-		return fmt.Errorf("Module.Start(): %v is already running", self.Name())
+		return fmt.Errorf("Module.Start(): %v is already running\n", self.name)
 	}
 
 	if self.file == nil || self.bufFile == nil {
@@ -177,21 +184,27 @@ func (self *Module) Start() error {
 
 	self.running = true
 
-	if self.Connected != nil {
-		if err := self.Connected(); err != nil {
-			return fmt.Errorf("Module.Start(): %v", err.Error())
-		}
+	if self.Connected == nil {
+		return nil
 	}
 
-	return nil
+	err := self.Connected()
+	if err != nil {
+		return fmt.Errorf("Module.Start(): %v", err.Error())
+	}
+
+	return err
 }
 
 // Calls Disconnect(), cleans up, and exits. Errors returned by Disconnect() are
-// logged and Exit() continues. If there is an error at any point the error is
-// returned and should be assumed that cleanup did not complete.
+// logged and Exit() continues. If there is an error at any other point the error
+// is returned and should be assumed that cleanup did not complete.
 func (self *Module) Exit() error {
+	self.mu.Lock()
+	defer self.mu.Unlock()
+
 	if !self.running {
-		return fmt.Errorf("Module.Exit(): %v is not running", self.Name())
+		return fmt.Errorf("Module.Exit(): %v is not running", self.name)
 	}
 
 	if self.Disconnect != nil {
@@ -216,9 +229,19 @@ func (self *Module) Exit() error {
 }
 
 // Calls Disconnect(), cleans up, and exits. ForceExit() continues on errors,
-// which are aggregated and returned in a slice
+// which are aggregated and returned in a slice. If there are no errors `nil`
+// is returned
 func (self *Module) ForceExit() []error {
+	self.mu.Lock()
+	defer self.mu.Unlock()
+
 	errs := make([]error, 0, 3)
+
+	if !self.running {
+		errs = append(errs, fmt.Errorf("Module.ForceExit(): %v is not running", self.name))
+
+		return errs
+	}
 
 	if self.Disconnect != nil {
 		if err := self.Disconnect(); err != nil {
@@ -238,6 +261,7 @@ func (self *Module) ForceExit() []error {
 		}
 	}
 
+	self.running = false
 	self.file, self.bufFile = nil, nil
 
 	if len(errs) == 0 {
@@ -249,9 +273,10 @@ func (self *Module) ForceExit() []error {
 
 // Register a function that is called when an Event of eventMode is triggered and
 // trigger equals input. trigger is lowered before registering.
-func (self *Module) Register(trigger string, eventMode Event, fn func(*irc.Line)) {
+func (self *Module) Register(eventMode Event, trigger string, fn func(*irc.Line)) {
 	trigger = strings.ToLower(trigger)
 	eventMode = Event(strings.ToUpper(string(eventMode)))
+
 	appendEvent(eventMode)
 	evT := eventTrigger{eventMode, trigger}
 
@@ -265,7 +290,7 @@ func (self *Module) Register(trigger string, eventMode Event, fn func(*irc.Line)
 
 // Register a function that is called when an Event of eventMode is triggered and
 // trigger equals input.
-func (self *Module) RegisterRegexp(trigger *regexp.Regexp, eventMode Event, fn func(*irc.Line)) {
+func (self *Module) RegisterRegexp(eventMode Event, trigger *regexp.Regexp, fn func(*irc.Line)) {
 	eventMode = Event(strings.ToUpper(string(eventMode)))
 	appendEvent(eventMode)
 
@@ -284,7 +309,7 @@ func (self *Module) RegisterRegexp(trigger *regexp.Regexp, eventMode Event, fn f
 
 // Handles triggers if module is enabled and user/chan is allowed. This is mainly
 // exported for use by library and should not have to be called by the user
-func (self *Module) Handle(trigger string, eventMode Event, line *irc.Line) {
+func (self *Module) Handle(eventMode Event, trigger string, line *irc.Line) {
 	// Filtered by: denyUser, allowUser, denyChan, allowChan
 	if !self.Enabled() ||
 		self.InDenyed(line.Nick) ||
@@ -299,11 +324,11 @@ func (self *Module) Handle(trigger string, eventMode Event, line *irc.Line) {
 
 	eventMode = Event(strings.ToUpper(string(eventMode)))
 
-	go self.handleString(trigger, eventMode, line)
-	go self.handleRegexp(trigger, eventMode, line)
+	go self.handleString(eventMode, trigger, line)
+	go self.handleRegexp(eventMode, trigger, line)
 }
 
-func (self *Module) handleString(trigger string, eventMode Event, line *irc.Line) {
+func (self *Module) handleString(eventMode Event, trigger string, line *irc.Line) {
 	trigger = strings.ToLower(trigger)
 	evT := eventTrigger{eventMode, trigger}
 
@@ -315,7 +340,7 @@ func (self *Module) handleString(trigger string, eventMode Event, line *irc.Line
 	}
 }
 
-func (self *Module) handleRegexp(trigger string, eventMode Event, line *irc.Line) {
+func (self *Module) handleRegexp(eventMode Event, trigger string, line *irc.Line) {
 	self.reMut.RLock()
 	defer self.reMut.RUnlock()
 
@@ -329,6 +354,7 @@ func (self *Module) handleRegexp(trigger string, eventMode Event, line *irc.Line
 // Returns a list of IRC commands registered
 func (self *Module) StringCommands() []string {
 	output := make([]string, 0, len(self.stTriggers)+len(self.reTriggers))
+
 	self.stMut.RLock()
 	self.reMut.RLock()
 	defer self.stMut.RUnlock()

@@ -124,11 +124,16 @@ func (me *Logger) println(priority int32, v ...interface{}) {
 }
 
 func (me *Logger) start() {
+	me.mut.Lock()
+
 	if me.quit != nil { // Already running
+		me.mut.Unlock()
 		return
 	}
 
 	me.quit = make(chan bool)
+	me.mut.Unlock()
+
 	for {
 		select {
 		case msg := <-me.prioMsg:
@@ -164,9 +169,7 @@ func (me *Logger) exit() {
 }
 
 func (me *Logger) addLog(msg *priorityMessage) {
-	if msg.message[len(msg.message)-1] == '\n' {
-		msg.message = msg.message[:len(msg.message)-1]
-	}
+	msg.message = strings.TrimRight(msg.message, "\n")
 
 	me.logs = append(me.logs,
 		fmt.Sprintf("[%5v] %v", priorityName[msg.priority], msg.message))
@@ -359,11 +362,11 @@ func (me *Logger) Logs(n int) []string {
 	return copySlice(me.logs[:n])
 }
 
-// Returns a copy of logs[len(logs) - min(n, len(logs):]. If n is 0 a nil value
-// is returned. Calling TailLogs(n) where n < 0 is equivalent to calling Logs(-n)
+// Returns a copy of logs[len(logs) - min(n, len(logs):]. Calling TailLogs(n)
+// where n < 0 is equivalent to calling Logs(-n)
 func (me *Logger) TailLogs(n int) []string {
 	if n == 0 {
-		return nil
+		return make([]string, 0)
 	} else if n < 0 {
 		return me.Logs(-n)
 	}

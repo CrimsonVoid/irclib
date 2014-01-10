@@ -82,9 +82,9 @@ func (self *access) InGroups(nick string, groups ...string) string {
 	self.mut.RLock()
 	defer self.mut.RUnlock()
 
-	for _, g := range groups {
-		if self.inGroup(nick, g) {
-			return g
+	for _, grp := range groups {
+		if self.inGroup(nick, grp) {
+			return grp
 		}
 	}
 

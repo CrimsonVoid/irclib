@@ -6,14 +6,12 @@ import (
 )
 
 func (self *ModManager) setupHandlers() {
-	config := self.Conn.Config()
-
 	// Identify to NickServ and join channels
 	self.Conn.HandleFunc(irc.CONNECTED, func(con *irc.Conn, line *irc.Line) {
-		con.Privmsg("NickServ", "IDENTIFY "+config.Pass)
+		con.Privmsg("NickServ", "IDENTIFY "+self.Conn.Config().Pass)
 
 		self.mut.RLock()
-		defer self.mut.RLock()
+		defer self.mut.RUnlock()
 
 		for _, ch := range self.Config.Chans {
 			con.Join(ch)
@@ -38,6 +36,6 @@ func (self *ModManager) run(event string, line *irc.Line) {
 
 	for _, mod := range self.modules {
 		// Module should check if enabled, not handlers
-		go mod.Handle(line.Text(), module.Event(event), line)
+		go mod.Handle(module.Event(event), line.Text(), line)
 	}
 }

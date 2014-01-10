@@ -21,6 +21,7 @@ type ModManager struct {
 	core    *module.Module   // Core "master" module
 	modules []*module.Module // List of registered modules
 	mut     sync.RWMutex
+	running bool
 
 	cons *console.Console // Console to get input
 
@@ -68,7 +69,7 @@ func NewManager(serverInfo *ServerInfo) (*ModManager, error) {
 
 	m := &ModManager{
 		core:    newCore(),
-		modules: make([]*module.Module, 0, 3),
+		modules: make([]*module.Module, 0, 5),
 		cons:    console.New(),
 
 		Conn: con,
@@ -114,18 +115,25 @@ func (self *ModManager) Register(mod *module.Module) error {
 
 // Connect to IRC. If a registered module's PreStart() returns an error it does
 // not attempt to call Start(). A map of module names to error is returned if
-// there were an errors or nil none. Errors are logged to the core module. Any
-// errors in "core" from the map then Connect() failed
+// there were any errors or nil if none. Errors are logged to the core module.
+// If there are errors in "core" from the map then Connect() failed
 func (self *ModManager) Connect() map[string]error {
-	self.mut.RLock()
-	defer self.mut.RUnlock()
+	self.mut.Lock()
+	defer self.mut.Unlock()
 
 	errMap := make(map[string]error)
 	errMut := new(sync.RWMutex)
 	wg := new(sync.WaitGroup)
 
+	if self.running {
+		errMap["core"] = errors.New("ModManager is already running")
+
+		return errMap
+	}
+
 	if self.Conn == nil || self.Config == nil {
 		errMap["core"] = errors.New("Improperly configured ModManager")
+
 		return errMap
 	}
 
@@ -135,6 +143,10 @@ func (self *ModManager) Connect() map[string]error {
 	// module.PreStart()
 	wg.Add(len(self.modules))
 	for _, mod := range self.modules {
+		if mod.Conn == nil {
+			mod.Conn = self.Conn
+		}
+
 		go func(mod *module.Module) {
 			defer wg.Done()
 
@@ -187,6 +199,8 @@ func (self *ModManager) Connect() map[string]error {
 	}
 	wg.Wait()
 
+	self.running = true
+
 	log.Printf("%v%v connected to %v%v\n",
 		console.FgGreen, self.Conn.Config().Me.Nick, self.Conn.Config().Server,
 		console.Reset)
@@ -201,20 +215,26 @@ func (self *ModManager) Connect() map[string]error {
 // to core. If there are any errors when calling module.Exit() ModManager will
 // not finish cleanup
 func (self *ModManager) Disconnect() map[string]error {
+	self.mut.Lock()
+	defer self.mut.Unlock()
+
 	errMap := make(map[string]error)
 	errMut := new(sync.RWMutex)
 	wg := new(sync.WaitGroup)
 
-	self.mut.RLock()
-	wg.Add(len(self.modules))
+	if !self.running {
+		errMap["core"] = errors.New("ModManager is not running")
 
+		return errMap
+	}
+
+	wg.Add(len(self.modules))
 	for _, mod := range self.modules {
 		go func(mod *module.Module) {
 			defer wg.Done()
 
 			err := mod.Exit()
 			if err == nil {
-				mod.Conn = nil
 				return
 			}
 
@@ -225,18 +245,18 @@ func (self *ModManager) Disconnect() map[string]error {
 			errMut.Unlock()
 		}(mod)
 	}
-
 	wg.Wait()
-	self.mut.RUnlock()
 
 	if len(errMap) != 0 {
 		self.core.Logger.Infoln("Errors when attempting to disconnect")
+
 		for modName, err := range errMap {
 			self.core.Logger.Errorf("irclibrary.Disconnect() %v: %v\n", modName, err)
 		}
 
 		return errMap
 	}
+
 	self.core.Logger.Infoln("Disconnected without errors")
 
 	if err := self.core.Exit(); err != nil {
@@ -246,20 +266,25 @@ func (self *ModManager) Disconnect() map[string]error {
 		return errMap
 	}
 
-	self.core.Conn = nil
 	self.cons.Stop()
-	self.Conn.Quit()
+	if self.Conn.Connected() {
+		self.Conn.Quit()
+	}
+
+	self.running = false
 
 	return errMap
 }
 
 // Force Disconnect all modules, returning a map of modules to a list or errors
 func (self *ModManager) ForceDisconnect() map[string][]error {
+	self.mut.Lock()
+	defer self.mut.RUnlock()
+
 	errMap := make(map[string][]error)
 	errMut := new(sync.Mutex)
 	wg := new(sync.WaitGroup)
 
-	self.mut.RLock()
 	wg.Add(len(self.modules))
 	for _, mod := range self.modules {
 		go func(mod *module.Module) {
@@ -267,7 +292,6 @@ func (self *ModManager) ForceDisconnect() map[string][]error {
 
 			err := mod.ForceExit()
 			if err == nil {
-				mod.Conn = nil
 				return
 			}
 
@@ -279,7 +303,6 @@ func (self *ModManager) ForceDisconnect() map[string][]error {
 		}(mod)
 	}
 	wg.Wait()
-	self.mut.RUnlock()
 
 	if len(errMap) == 0 {
 		self.core.Logger.Infoln("Force disconnected without errors")
@@ -299,28 +322,34 @@ func (self *ModManager) ForceDisconnect() map[string][]error {
 
 	}
 
-	self.core.Conn = nil
 	self.cons.Stop()
-	self.Conn.Quit()
+
+	if self.Conn.Connected() {
+		self.Conn.Quit()
+	}
 
 	return errMap
 }
 
 // Force disconnect a module aggregating all errors and returning that list
 func (self *ModManager) ForceDisconnectModule(modName string) []error {
+	self.mut.RLock()
+	defer self.mut.RUnlock()
+
 	for _, mod := range self.modules {
 		if mod.Name() == modName {
-			err := mod.ForceExit()
-
-			if err == nil {
-				mod.Conn = nil
-			}
-
-			return err
+			return mod.ForceExit()
 		}
 	}
 
 	return nil
+}
+
+func (self *ModManager) Running() bool {
+	self.mut.RLock()
+	defer self.mut.RUnlock()
+
+	return self.running
 }
 
 // Register console commands
