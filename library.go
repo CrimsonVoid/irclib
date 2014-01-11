@@ -187,6 +187,7 @@ func (self *ModManager) Connect() map[string]error {
 
 			err := mod.Start()
 			if err == nil {
+				mod.Logger.Infof("%v.Start() successful!\n", mod.Name())
 				return
 			}
 
@@ -383,6 +384,6 @@ func (self *ModManager) registerCommands() {
 
 	re2 := regexp.MustCompile(`^f(orce\s)?quit\s(?P<module>.*)?$`)
 	self.cons.RegisterRegexp(re2, func(trigger string) {
-		self.coreForceDisconnect(re2, trigger)
+		self.coreForceDisconnect(trigger)
 	})
 }

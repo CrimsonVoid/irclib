@@ -72,7 +72,7 @@ func (self *ModManager) regCoreQuit() error {
 func (self *ModManager) regCoreForceQuit() error {
 	re := regexp.MustCompile(`^f(orce\s)?quit\s(?P<module>.*)?$`)
 	err := self.core.Console.RegisterRegexp(re, func(trigger string) {
-		self.coreForceDisconnect(re, trigger)
+		self.coreForceDisconnect(trigger)
 	})
 
 	return err
@@ -171,13 +171,13 @@ func (self *ModManager) coreDisconnect() {
 	self.Quit <- false
 }
 
-func (self *ModManager) coreForceDisconnect(re *regexp.Regexp, trigger string) {
+func (self *ModManager) coreForceDisconnect(trigger string) {
 	defer func() {
 		<-time.After(time.Second * 2)
 		self.Quit <- true
 	}()
 
-	// re := regexp.MustCompile(`^f(orce\s)?quit\s(?P<module>.*)?$`)
+	re := regexp.MustCompile(`^f(orce\s)?quit\s(?P<module>.*)?$`)
 	errMap := make(map[string][]error)
 	groups, _ := matchGroups(re, trigger)
 

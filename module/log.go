@@ -142,6 +142,7 @@ func (me *Logger) start() {
 			me.addLog(msg)
 		case <-me.quit:
 			defer func() { me.quit = nil }()
+
 			// Write out pending logs
 			msgRead := 0
 			for msgRead < len(me.prioMsg) {
@@ -170,6 +171,9 @@ func (me *Logger) exit() {
 
 func (me *Logger) addLog(msg *priorityMessage) {
 	msg.message = strings.TrimRight(msg.message, "\n")
+
+	me.mut.Lock()
+	defer me.mut.Unlock()
 
 	me.logs = append(me.logs,
 		fmt.Sprintf("[%5v] %v", priorityName[msg.priority], msg.message))
