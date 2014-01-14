@@ -382,7 +382,7 @@ func (self *ModManager) registerCommands() {
 		self.coreDisconnect()
 	})
 
-	re2 := regexp.MustCompile(`^f(orce\s)?quit\s(?P<module>.*)?$`)
+	re2 := regexp.MustCompile(`^:f(orce\s)?q(uit)?(\s?P<module>.*)?$`)
 	self.cons.RegisterRegexp(re2, func(trigger string) {
 		self.coreForceDisconnect(trigger)
 	})

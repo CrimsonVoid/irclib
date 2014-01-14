@@ -3,12 +3,14 @@
 package module
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 // Priority used for identifying the severity of an event for Logger
@@ -61,9 +63,9 @@ type Logger struct {
 	logger   *log.Logger
 	logs     []string
 
-	prioMsg chan *priorityMessage
-	quit    chan bool
-	mut     sync.RWMutex
+	prioMsg        chan *priorityMessage
+	quit, quitWait chan bool
+	mut            sync.RWMutex
 }
 
 // New creates a new Logger.
@@ -74,8 +76,9 @@ func newLogger(out io.Writer, prefix string, flag int, priority int32) *Logger {
 		logger:   log.New(out, prefix, flag),
 		logs:     make([]string, 0, 5),
 
-		prioMsg: make(chan *priorityMessage, 4),
-		quit:    nil,
+		prioMsg:  make(chan *priorityMessage, 4),
+		quit:     nil,
+		quitWait: make(chan bool),
 	}
 }
 
@@ -141,17 +144,19 @@ func (me *Logger) start() {
 			me.logger.Print(msg.message)
 			me.addLog(msg)
 		case <-me.quit:
-			defer func() { me.quit = nil }()
+			defer func() {
+				me.quit = nil
+				me.quitWait <- true
+			}()
 
 			// Write out pending logs
 			msgRead := 0
-			for msgRead < len(me.prioMsg) {
+			for ; msgRead < len(me.prioMsg); msgRead++ {
 				select {
 				case msg := <-me.prioMsg:
 					me.setFullPrefix(msg.priority)
 					me.logger.Print(msg.message)
 					me.addLog(msg)
-					msgRead++
 				default:
 					return
 				}
@@ -162,11 +167,17 @@ func (me *Logger) start() {
 	}
 }
 
-func (me *Logger) exit() {
+func (me *Logger) exit() error {
+	timeout := time.After(time.Millisecond * 500)
+
 	select {
 	case me.quit <- true: // Sends block on a nil-value chan, meaning Logger isn't running
-	default:
+		<-me.quitWait
+	case <-timeout:
+		return errors.New("Timed out while trying to exit")
 	}
+
+	return nil
 }
 
 func (me *Logger) addLog(msg *priorityMessage) {

@@ -213,7 +213,10 @@ func (self *Module) Exit() error {
 		}
 	}
 
-	self.Logger.exit()
+	if err := self.Logger.exit(); err != nil {
+		return err
+	}
+
 	if err := self.bufFile.Flush(); err != nil {
 		return err
 	}
@@ -235,7 +238,7 @@ func (self *Module) ForceExit() []error {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
-	errs := make([]error, 0, 3)
+	errs := make([]error, 0, 4)
 
 	if !self.running {
 		errs = append(errs, fmt.Errorf("Module.ForceExit(): %v is not running", self.name))
@@ -249,7 +252,10 @@ func (self *Module) ForceExit() []error {
 		}
 	}
 
-	self.Logger.exit()
+	if err := self.Logger.exit(); err != nil {
+		errs = append(errs, err)
+	}
+
 	if self.bufFile != nil {
 		if err := self.bufFile.Flush(); err != nil {
 			errs = append(errs, err)
