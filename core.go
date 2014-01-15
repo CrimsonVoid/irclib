@@ -83,12 +83,12 @@ func (self *ModManager) regCoreListModules() error {
 		for _, mod := range self.modules {
 			var color string
 			if mod.Enabled() {
-				color = console.FgGreen
+				color = console.C_FgGreen
 			} else {
-				color = console.FgRed
+				color = console.C_FgRed
 			}
 
-			log.Printf("%v%v%v - %v\n", color, mod.Name(), console.Reset, mod.Description())
+			log.Printf("%v%v%v - %v\n", color, mod.Name(), console.C_Reset, mod.Description())
 		}
 	})
 
@@ -156,13 +156,14 @@ func (self *ModManager) regCoreAccessManip() error {
 func (self *ModManager) coreDisconnect() {
 	errors := self.Disconnect()
 	if len(errors) == 0 {
-		log.Printf("%vDisconnected without errors%v\n", console.FgGreen, console.Reset)
+		log.Printf("%vDisconnected without errors%v\n", console.C_FgGreen, console.C_Reset)
 		<-time.After(time.Second * 2)
 		self.Quit <- true
 		return
 	}
 
-	out := fmt.Sprintf("%vErrors when attempting to disconnect%v\n", console.FgRed, console.Reset)
+	out := fmt.Sprintf("%vErrors when attempting to disconnect%v\n",
+		console.C_FgRed, console.C_Reset)
 	for modName, err := range errors {
 		out += fmt.Sprintf("  %v: %v\n", modName, err)
 	}
@@ -185,7 +186,7 @@ func (self *ModManager) coreForceDisconnect(trigger string) {
 		errs := self.ForceDisconnectModule(modName)
 		if len(errs) == 0 {
 			log.Printf("%vForce disconnected module %v without errors%v\n",
-				console.FgGreen, modName, console.Reset)
+				console.C_FgGreen, modName, console.C_Reset)
 
 			return
 		}
@@ -193,13 +194,13 @@ func (self *ModManager) coreForceDisconnect(trigger string) {
 		errMap[modName] = errs
 	} else if errMap = self.ForceDisconnect(); len(errMap) == 0 {
 		log.Printf("%vForce disconnected without errors%v\n",
-			console.FgGreen, console.Reset)
+			console.C_FgGreen, console.C_Reset)
 
 		return
 	}
 
 	out := fmt.Sprintf("%vErrors when attempting to force disconnect %v%v\n",
-		console.FgRed, groups["module"], console.Reset)
+		console.C_FgRed, groups["module"], console.C_Reset)
 
 	for modName, errs := range errMap {
 		errStr := fmt.Sprintf("  %v", modName)

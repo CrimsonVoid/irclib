@@ -203,8 +203,8 @@ func (self *ModManager) Connect() map[string]error {
 	self.running = true
 
 	log.Printf("%v%v connected to %v%v\n",
-		console.FgGreen, self.Conn.Config().Me.Nick, self.Conn.Config().Server,
-		console.Reset)
+		console.C_FgGreen, self.Conn.Config().Me.Nick, self.Conn.Config().Server,
+		console.C_Reset)
 	self.core.Logger.Infof("%v connected to %v\n",
 		self.Conn.Config().Me.Nick, self.Conn.Config().Server)
 

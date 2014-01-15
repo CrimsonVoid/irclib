@@ -1,31 +1,31 @@
 package irclib
 
 const (
-	// Color      = "\x03"
-	Bold          = "\x02"
-	Italic        = "\x09"
-	Reset         = "\x0F"
-	StrikeThrough = "\x13"
-	Underline     = "\x15"
-	Reverse       = "\x16"
-	Underline2    = "\x1F"
+	CC_Color         = "\x03"
+	CC_Bold          = "\x02"
+	CC_Italic        = "\x09"
+	CC_Reset         = "\x0F"
+	CC_StrikeThrough = "\x13"
+	CC_Underline     = "\x15"
+	CC_Reverse       = "\x16"
+	CC_Underline2    = "\x1F"
 )
 
 const (
-	White = "\x03" + string(iota) // Also color reset in most clients
-	Black
-	Blue
-	Green
-	LightRed
-	Red
-	Magenta
-	Orange
-	Yellow
-	LightGreen
-	Cyan
-	LightCyan
-	LightBlue
-	LightMagenta
-	Gray
-	LightGray
+	CC_White = CC_Color + string(iota) // Also color reset in most clients
+	CC_Black
+	CC_Blue
+	CC_Green
+	CC_LightRed
+	CC_Red
+	CC_Magenta
+	CC_Orange
+	CC_Yellow
+	CC_LightGreen
+	CC_Cyan
+	CC_LightCyan
+	CC_LightBlue
+	CC_LightMagenta
+	CC_Gray
+	CC_LightGray
 )
