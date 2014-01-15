@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"regexp"
 	"strings"
@@ -146,7 +145,7 @@ func (self *Module) PreStart() error {
 
 	if self.file == nil || self.bufFile == nil {
 		if err := self.createLogger(); err != nil {
-			log.Println(self.Name(), "error creating log file", err)
+			consLog.Println(self.Name(), "error creating log file", err)
 
 			return err
 		}

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
-	"log"
 	"regexp"
 	"strings"
 	"sync"
@@ -202,7 +201,7 @@ func (self *ModManager) Connect() map[string]error {
 
 	self.running = true
 
-	log.Printf("%v%v connected to %v%v\n",
+	consLog.Printf("%v%v connected to %v%v\n",
 		console.C_FgGreen, self.Conn.Config().Me.Nick, self.Conn.Config().Server,
 		console.C_Reset)
 	self.core.Logger.Infof("%v connected to %v\n",
@@ -261,7 +260,7 @@ func (self *ModManager) Disconnect() map[string]error {
 	self.core.Logger.Infoln("Disconnected without errors")
 
 	if err := self.core.Exit(); err != nil {
-		log.Println("Core breach! Unsuccessful Exit():", err)
+		consLog.Println("Core breach! Unsuccessful Exit():", err)
 		errMap["core"] = err
 
 		return errMap
@@ -318,7 +317,7 @@ func (self *ModManager) ForceDisconnect() map[string][]error {
 	}
 
 	if err := self.core.ForceExit(); err != nil {
-		log.Println("Core breach! unsuccessful ForceExit():", err)
+		consLog.Println("Core breach! unsuccessful ForceExit():", err)
 		errMap["core"] = err
 
 	}

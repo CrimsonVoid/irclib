@@ -1,6 +1,8 @@
 package module
 
 import (
+	"log"
+	"os"
 	"sync"
 )
 
@@ -45,5 +47,6 @@ var (
 )
 
 var (
-	logDir string // Module specific log directory
+	logDir  string // Module specific log directory
+	consLog = log.New(os.Stdout, "", 0)
 )

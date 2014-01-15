@@ -1,16 +1,10 @@
 package module
 
 import (
-	"log"
 	"regexp"
 	"strconv"
 	"strings"
 )
-
-func init() {
-	// Use log to print to stdout because it is thread safe
-	log.SetFlags(0)
-}
 
 // Register commands, logs errors, and continues
 func (self *Module) registerBaseCommands() {
@@ -53,7 +47,7 @@ func (self *Module) registerInfo() error {
 		unDU, dnyUsr := self.GetRODenyed(User)
 		unDC, dnyChn := self.GetRODenyed(Chan)
 
-		log.Printf("%v%v\x1b[0m\n\t%v\n%v"+
+		consLog.Printf("%v%v\x1b[0m\n\t%v\n%v"+
 			"\n\tIRC Commands\n\t\t%v"+
 			"\n\tConsole Commands\n\t\t%v\n\n"+
 
@@ -106,13 +100,13 @@ func (self *Module) registerAdd() error {
 
 		if err != nil {
 			self.Logger.Errorln("Module.registerAdd()", err.Error())
-			log.Printf("Error %v %v: %v\n", errMsg, nick, err)
+			consLog.Printf("Error %v %v: %v\n", errMsg, nick, err)
 
 			return
 		}
 
 		self.Logger.Infoln(msg, nick)
-		log.Println(msg, nick)
+		consLog.Println(msg, nick)
 	})
 
 	return err
@@ -144,13 +138,13 @@ func (self *Module) registerRem() error {
 
 		if err != nil {
 			self.Logger.Errorln("Module.registerRem()", err.Error())
-			log.Printf("Error removing %v from %v: %v\n", nick, errMsg, err)
+			consLog.Printf("Error removing %v from %v: %v\n", nick, errMsg, err)
 
 			return
 		}
 
 		self.Logger.Infoln("Removed", nick)
-		log.Println("Removed", nick)
+		consLog.Println("Removed", nick)
 	})
 
 	return err
@@ -187,7 +181,7 @@ func (self *Module) registerClear() error {
 		}
 
 		self.Logger.Infof("Cleared %v list\n", msg)
-		log.Printf("Cleared %v list\n", msg)
+		consLog.Printf("Cleared %v list\n", msg)
 	})
 
 	return err
@@ -227,7 +221,7 @@ func (self *Module) registerList() error {
 			}
 		}
 
-		log.Println(msg, list)
+		consLog.Println(msg, list)
 		unlock <- true
 	})
 
@@ -254,7 +248,7 @@ func (self *Module) registerEnable() error {
 		}
 
 		self.Logger.Infoln(status, self.Name())
-		log.Println(status, self.Name())
+		consLog.Println(status, self.Name())
 	})
 
 	return err
@@ -267,7 +261,7 @@ func (self *Module) registerLogs() error {
 
 		logs := self.Logger.TailLogs(10)
 
-		log.Printf("%v\nShowing %v of %v logs\n",
+		consLog.Printf("%v\nShowing %v of %v logs\n",
 			strings.Join(logs, "\n"),
 			len(logs),
 			self.Logger.LenLogs())
@@ -294,7 +288,7 @@ func (self *Module) registerLogs2() error {
 
 			if err != nil {
 				self.Logger.Errorln("Module.registerLogs():", err.Error())
-				log.Println("Module.registerLogs(): ", err.Error())
+				consLog.Println("Module.registerLogs(): ", err.Error())
 
 				return
 			}
@@ -302,9 +296,9 @@ func (self *Module) registerLogs2() error {
 
 		switch groups["cmd"] {
 		case "head":
-			log.Println(strings.Join(self.Logger.Logs(num), "\n"))
+			consLog.Println(strings.Join(self.Logger.Logs(num), "\n"))
 		default: // case "tail":
-			log.Println(strings.Join(self.Logger.TailLogs(num), "\n"))
+			consLog.Println(strings.Join(self.Logger.TailLogs(num), "\n"))
 		}
 	})
 
@@ -315,7 +309,7 @@ func (self *Module) registerLogs2() error {
 func (self *Module) registerClearLogs() error {
 	err := self.Console.Register("clear logs", func(s string) {
 		self.Logger.ClearLogs()
-		log.Println("Logs cleared")
+		consLog.Println("Logs cleared")
 	})
 
 	return err

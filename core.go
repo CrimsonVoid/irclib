@@ -2,17 +2,12 @@ package irclib
 
 import (
 	"fmt"
-	"log"
 	"regexp"
 	"time"
 
 	"github.com/crimsonvoid/console"
 	"github.com/crimsonvoid/irclib/module"
 )
-
-func init() {
-	log.SetFlags(0)
-}
 
 func newCore() *module.Module {
 	modInfo := module.ModuleInfo{
@@ -88,7 +83,7 @@ func (self *ModManager) regCoreListModules() error {
 				color = console.C_FgRed
 			}
 
-			log.Printf("%v%v%v - %v\n", color, mod.Name(), console.C_Reset, mod.Description())
+			consLog.Printf("%v%v%v - %v\n", color, mod.Name(), console.C_Reset, mod.Description())
 		}
 	})
 
@@ -119,7 +114,7 @@ func (self *ModManager) regCoreChanManage() error {
 func (self *ModManager) regCoreAccessList() error {
 	err := self.core.Console.Register("access list", func(trigger string) {
 		for grp, nicks := range self.Config.Access.Groups() {
-			log.Printf("%v\n  %v\n", grp, nicks)
+			consLog.Printf("%v\n  %v\n", grp, nicks)
 		}
 	})
 
@@ -146,7 +141,7 @@ func (self *ModManager) regCoreAccessManip() error {
 			}
 		}
 
-		log.Printf(msg, groups["nick"], groups["group"])
+		consLog.Printf(msg, groups["nick"], groups["group"])
 		self.core.Logger.Infof(msg, groups["nick"], groups["group"])
 	})
 
@@ -156,7 +151,7 @@ func (self *ModManager) regCoreAccessManip() error {
 func (self *ModManager) coreDisconnect() {
 	errors := self.Disconnect()
 	if len(errors) == 0 {
-		log.Printf("%vDisconnected without errors%v\n", console.C_FgGreen, console.C_Reset)
+		consLog.Printf("%vDisconnected without errors%v\n", console.C_FgGreen, console.C_Reset)
 		<-time.After(time.Second * 2)
 		self.Quit <- true
 		return
@@ -167,7 +162,7 @@ func (self *ModManager) coreDisconnect() {
 	for modName, err := range errors {
 		out += fmt.Sprintf("  %v: %v\n", modName, err)
 	}
-	log.Print(out)
+	consLog.Print(out)
 
 	self.Quit <- false
 }
@@ -185,7 +180,7 @@ func (self *ModManager) coreForceDisconnect(trigger string) {
 	if modName, ok := groups["module"]; ok {
 		errs := self.ForceDisconnectModule(modName)
 		if len(errs) == 0 {
-			log.Printf("%vForce disconnected module %v without errors%v\n",
+			consLog.Printf("%vForce disconnected module %v without errors%v\n",
 				console.C_FgGreen, modName, console.C_Reset)
 
 			return
@@ -193,7 +188,7 @@ func (self *ModManager) coreForceDisconnect(trigger string) {
 
 		errMap[modName] = errs
 	} else if errMap = self.ForceDisconnect(); len(errMap) == 0 {
-		log.Printf("%vForce disconnected without errors%v\n",
+		consLog.Printf("%vForce disconnected without errors%v\n",
 			console.C_FgGreen, console.C_Reset)
 
 		return
@@ -210,5 +205,5 @@ func (self *ModManager) coreForceDisconnect(trigger string) {
 
 		out += errStr
 	}
-	log.Print(out)
+	consLog.Print(out)
 }

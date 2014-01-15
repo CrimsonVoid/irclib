@@ -1,5 +1,10 @@
 package irclib
 
+import (
+	"log"
+	"os"
+)
+
 const (
 	CC_Color         = "\x03"
 	CC_Bold          = "\x02"
@@ -28,4 +33,8 @@ const (
 	CC_LightMagenta
 	CC_Gray
 	CC_LightGray
+)
+
+var (
+	consLog = log.New(os.Stdout, "", 0)
 )
