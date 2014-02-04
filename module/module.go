@@ -5,7 +5,6 @@ package module
 import (
 	"bufio"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -53,27 +52,6 @@ type Module struct {
 	Logger  *Logger
 }
 
-func init() {
-	devNil, err := os.Open(os.DevNull)
-	if err != nil {
-		panic(err)
-	}
-
-	flagSet := flag.NewFlagSet(os.Args[0], flag.PanicOnError)
-	flagSet.SetOutput(devNil)
-
-	flagSet.StringVar(&logDir, "logDir", "./logs", "Set log directory")
-	flagSet.Parse(os.Args[1:])
-
-	if logDir[len(logDir)-1] != '/' {
-		logDir = logDir + "/"
-	}
-
-	if err := devNil.Close(); err != nil {
-		panic(err)
-	}
-}
-
 // Read a JSON file and return a configured Module. Errors indicate a failure to
 // parse the file or an incomplete configuration
 func New(configFile string) (*Module, error) {
@@ -100,7 +78,7 @@ func (self *ModuleInfo) NewModule() (*Module, error) {
 
 	if self.LogDir == "" {
 		self.LogDir = logDir
-	} else if self.LogDir[len(logDir)-1:] != "/" {
+	} else if self.LogDir[len(self.LogDir)-1:] != "/" {
 		self.LogDir = self.LogDir + "/"
 	}
 
@@ -401,4 +379,12 @@ func (self *Module) createLogger() error {
 	go self.Logger.start()
 
 	return nil
+}
+
+func SetLogDir(logdir string) {
+	if logdir[len(logdir)-1] == '/' {
+		logDir = logdir
+	} else {
+		logDir = logdir + "/"
+	}
 }

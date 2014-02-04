@@ -47,6 +47,6 @@ var (
 )
 
 var (
-	logDir  string // Module specific log directory
+	logDir  = "./logs/" // Module specific log directory
 	consLog = log.New(os.Stdout, "", 0)
 )
