@@ -35,8 +35,7 @@ func (self *moduleConfig) Name() string {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 
-	name := self.name
-	return name
+	return self.name
 }
 
 // Returns the module description
@@ -44,8 +43,7 @@ func (self *moduleConfig) Description() string {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 
-	desc := self.description
-	return desc
+	return self.description
 }
 
 // Set module description
@@ -61,8 +59,7 @@ func (self *moduleConfig) Enabled() bool {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 
-	enabled := self.enabled
-	return enabled
+	return self.enabled
 }
 
 // Set the status of the module
@@ -88,8 +85,7 @@ func (self *moduleConfig) LogDir() string {
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 
-	logDir := self.logDir
-	return logDir
+	return self.logDir
 }
 
 // Sets the directory logs are saved to. This does not take effect until the module is restarted

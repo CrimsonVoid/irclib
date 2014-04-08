@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -22,6 +23,7 @@ type ModManager struct {
 	mut     sync.RWMutex
 	running bool
 
+	// TODO - Move where cons is created
 	cons *console.Console // Console to get input
 
 	Quit chan bool // Quit chan to block until a successful disconnect or force disconnect
@@ -69,7 +71,7 @@ func NewManager(serverInfo *ServerInfo) (*ModManager, error) {
 	m := &ModManager{
 		core:    newCore(),
 		modules: make([]*module.Module, 0, 5),
-		cons:    console.New(),
+		cons:    console.New(os.Stdin),
 
 		Conn: con,
 		Config: &BotInfo{
@@ -137,7 +139,6 @@ func (self *ModManager) Connect() map[string]error {
 	}
 
 	self.setupHandlers()
-	go self.cons.Monitor()
 
 	// module.PreStart()
 	wg.Add(len(self.modules))
@@ -230,6 +231,7 @@ func (self *ModManager) Disconnect() map[string]error {
 
 	wg.Add(len(self.modules))
 	for _, mod := range self.modules {
+		// TOOD - Modules can effect Conn, unsafe
 		go func(mod *module.Module) {
 			defer wg.Done()
 
@@ -266,7 +268,7 @@ func (self *ModManager) Disconnect() map[string]error {
 		return errMap
 	}
 
-	self.cons.Stop()
+	self.cons.Close()
 	if self.Conn.Connected() {
 		self.Conn.Quit()
 	}
@@ -322,7 +324,7 @@ func (self *ModManager) ForceDisconnect() map[string][]error {
 
 	}
 
-	self.cons.Stop()
+	self.cons.Close()
 
 	if self.Conn.Connected() {
 		self.Conn.Quit()

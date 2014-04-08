@@ -142,7 +142,7 @@ func (self *Module) PreStart() error {
 }
 
 // Creates a Logger if necessay and calls Connet() if applicable. This is
-// exported for use by library and most likely doesn't need to be called by the
+// exported for use by library and most likely does not need to be called by the
 // user. Error is non-nil if a logger could not be created, module is already
 // running or Connect() returned an error; errors returned by Connect() are logged
 func (self *Module) Start() error {
@@ -150,7 +150,7 @@ func (self *Module) Start() error {
 	defer self.mu.Unlock()
 
 	if self.running {
-		return fmt.Errorf("Module.Start(): %v is already running\n", self.name)
+		return fmt.Errorf("Module.Start(): %v is already running", self.name)
 	}
 
 	if self.file == nil || self.bufFile == nil {
@@ -165,12 +165,11 @@ func (self *Module) Start() error {
 		return nil
 	}
 
-	err := self.Connected()
-	if err != nil {
+	if err := self.Connected(); err != nil {
 		return fmt.Errorf("Module.Start(): %v", err.Error())
 	}
 
-	return err
+	return nil
 }
 
 // Calls Disconnect(), cleans up, and exits. Errors returned by Disconnect() are
@@ -190,9 +189,7 @@ func (self *Module) Exit() error {
 		}
 	}
 
-	if err := self.Logger.exit(); err != nil {
-		return err
-	}
+	self.Logger.exit()
 
 	if err := self.bufFile.Flush(); err != nil {
 		return err
@@ -215,7 +212,7 @@ func (self *Module) ForceExit() []error {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 
-	errs := make([]error, 0, 4)
+	errs := make([]error, 0, 5)
 
 	if !self.running {
 		errs = append(errs, fmt.Errorf("Module.ForceExit(): %v is not running", self.name))
@@ -229,19 +226,14 @@ func (self *Module) ForceExit() []error {
 		}
 	}
 
-	if err := self.Logger.exit(); err != nil {
+	self.Logger.exit()
+
+	if err := self.bufFile.Flush(); err != nil {
 		errs = append(errs, err)
 	}
 
-	if self.bufFile != nil {
-		if err := self.bufFile.Flush(); err != nil {
-			errs = append(errs, err)
-		}
-	}
-	if self.file != nil {
-		if err := self.file.Close(); err != nil {
-			errs = append(errs, err)
-		}
+	if err := self.file.Close(); err != nil {
+		errs = append(errs, err)
 	}
 
 	self.running = false
@@ -249,9 +241,9 @@ func (self *Module) ForceExit() []error {
 
 	if len(errs) == 0 {
 		return nil
-	} else {
-		return errs
 	}
+
+	return errs
 }
 
 // Register a function that is called when an Event of eventMode is triggered and
@@ -275,12 +267,9 @@ func (self *Module) Register(eventMode Event, trigger string, fn func(*irc.Line)
 // trigger equals input.
 func (self *Module) RegisterRegexp(eventMode Event, trigger *regexp.Regexp, fn func(*irc.Line)) {
 	eventMode = Event(strings.ToUpper(string(eventMode)))
-	appendEvent(eventMode)
 
-	reM := &re{
-		trigger: trigger,
-		fn:      fn,
-	}
+	appendEvent(eventMode)
+	reM := &re{trigger, fn}
 
 	self.reMut.Lock()
 	defer self.reMut.Unlock()
@@ -297,10 +286,10 @@ func (self *Module) Handle(eventMode Event, trigger string, line *irc.Line) {
 	if !self.Enabled() ||
 		self.InDenyed(line.Nick) ||
 		// Empty allowUser list => allow all
-		(self.LenAllowed(User) != 0 && !self.InAllowed(line.Nick)) ||
+		(self.LenAllowed(UC_User) != 0 && !self.InAllowed(line.Nick)) ||
 		self.InDenyed(line.Target()) ||
 		// Empty denyChan list => allow all
-		(self.LenAllowed(Chan) != 0 && !self.InAllowed(line.Target())) {
+		(self.LenAllowed(UC_Chan) != 0 && !self.InAllowed(line.Target())) {
 
 		return
 	}
@@ -328,7 +317,7 @@ func (self *Module) handleRegexp(eventMode Event, trigger string, line *irc.Line
 	defer self.reMut.RUnlock()
 
 	for _, reM := range self.reTriggers[eventMode] {
-		if reM.trigger.FindStringSubmatch(trigger) != nil {
+		if reM.trigger.MatchString(trigger) {
 			go reM.fn(line.Copy())
 		}
 	}
@@ -376,7 +365,6 @@ func (self *Module) createLogger() error {
 	self.file = file
 	self.bufFile = bufio.NewWriter(self.file)
 	self.Logger = newLogger(self.bufFile, "", Lpriority|LstdFlags, Pinfo)
-	go self.Logger.start()
 
 	return nil
 }

@@ -23,6 +23,7 @@ func add(list *[]string, target string) error {
 }
 
 // Removes 'target' from 'list'; returns an error if 'target' is not in 'list'
+// This will not preserve order
 func remove(list *[]string, target string) error {
 	target = strings.ToLower(target)
 
@@ -31,8 +32,10 @@ func remove(list *[]string, target string) error {
 			continue
 		}
 
-		copy((*list)[i:], (*list)[i+1:])
-		(*list) = (*list)[:len(*list)-1]
+		listLen := len(*list) - 1
+		(*list)[i] = (*list)[listLen]
+		(*list)[listLen] = ""
+		(*list) = (*list)[:listLen]
 
 		return nil
 	}
@@ -49,6 +52,7 @@ func clear(list *[]string) {
 func copySlice(list []string) []string {
 	s := make([]string, len(list))
 	copy(s, list)
+
 	return s
 }
 

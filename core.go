@@ -3,7 +3,6 @@ package irclib
 import (
 	"fmt"
 	"regexp"
-	"time"
 
 	"github.com/crimsonvoid/console"
 	"github.com/crimsonvoid/irclib/module"
@@ -34,23 +33,23 @@ func newCore() *module.Module {
 func (self *ModManager) registerCoreCommands() {
 	self.core.Conn = self.Conn
 
-	errs := []error{
+	errFns := []func() error{
 		// Quit
-		self.regCoreQuit(),
+		self.regCoreQuit,
 		// Force quit, optional module name
-		self.regCoreForceQuit(),
+		self.regCoreForceQuit,
 		// List modules
-		self.regCoreListModules(),
+		self.regCoreListModules,
 		// Join or Part channels
-		self.regCoreChanManage(),
+		self.regCoreChanManage,
 		// Print access list
-		self.regCoreAccessList(),
+		self.regCoreAccessList,
 		// Add or remove nicks from access list
-		self.regCoreAccessManip(),
+		self.regCoreAccessManip,
 	}
 
-	for _, err := range errs {
-		if err != nil {
+	for _, fn := range errFns {
+		if err := fn(); err != nil {
 			panic(err)
 		}
 	}
@@ -75,25 +74,30 @@ func (self *ModManager) regCoreForceQuit() error {
 
 func (self *ModManager) regCoreListModules() error {
 	err := self.core.Console.Register("list", func(trigger string) {
+		self.mut.RLock()
+		defer self.mut.RUnlock()
+
+		msg := ""
 		for _, mod := range self.modules {
-			var color string
-			if mod.Enabled() {
-				color = console.C_FgGreen
-			} else {
+			color := console.C_FgGreen
+			if !mod.Enabled() {
 				color = console.C_FgRed
 			}
 
-			consLog.Printf("%v%v%v - %v\n", color, mod.Name(), console.C_Reset, mod.Description())
+			msg += fmt.Sprintf("%v%v%%[1]v - %v\n",
+				color, mod.Name(), mod.Description())
 		}
+
+		consLog.Printf(msg, console.C_Reset)
 	})
 
 	return err
 }
 
 func (self *ModManager) regCoreChanManage() error {
-	re2 := regexp.MustCompile(`^(?P<cmd>join|part)\s(?P<chan>.*)$`)
-	err := self.core.Console.RegisterRegexp(re2, func(trigger string) {
-		groups, _ := matchGroups(re2, trigger)
+	re := regexp.MustCompile(`^(?P<cmd>join|part)\s(?P<chan>.*)$`)
+	err := self.core.Console.RegisterRegexp(re, func(trigger string) {
+		groups, _ := matchGroups(re, trigger)
 		channel := groups["chan"]
 		if channel[0] != '#' {
 			channel = "#" + channel
@@ -125,7 +129,7 @@ func (self *ModManager) regCoreAccessManip() error {
 	re := regexp.MustCompile(`^access\s(?P<cmd>add|rem)\s(?P<group>.*)\s(?P<nick>.*)$`)
 	err := self.core.Console.RegisterRegexp(re, func(trigger string) {
 		groups, _ := matchGroups(re, trigger)
-		var msg string
+		msg := ""
 
 		if groups["cmd"] == "add" {
 			if self.Config.Access.Add(groups["nick"], groups["group"]) {
@@ -150,10 +154,11 @@ func (self *ModManager) regCoreAccessManip() error {
 
 func (self *ModManager) coreDisconnect() {
 	errors := self.Disconnect()
+
 	if len(errors) == 0 {
 		consLog.Printf("%vDisconnected without errors%v\n", console.C_FgGreen, console.C_Reset)
-		<-time.After(time.Second * 2)
 		self.Quit <- true
+
 		return
 	}
 
@@ -169,7 +174,6 @@ func (self *ModManager) coreDisconnect() {
 
 func (self *ModManager) coreForceDisconnect(trigger string) {
 	defer func() {
-		<-time.After(time.Second * 2)
 		self.Quit <- true
 	}()
 

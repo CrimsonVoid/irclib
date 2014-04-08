@@ -32,19 +32,7 @@ func (self *access) Remove(nick, group string) bool {
 		return false
 	}
 
-	for i, n := range list {
-		if n != nick {
-			continue
-		}
-
-		copy(list[i:], list[i+1:])
-		list = list[:len(list)-1]
-		self.list[group] = list
-
-		return true
-	}
-
-	return false
+	return remove(&list, nick)
 }
 
 // Returns a map[string][]string of groups from access list. If a requested group

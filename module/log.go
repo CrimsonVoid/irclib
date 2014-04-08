@@ -3,14 +3,12 @@
 package module
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"log"
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 )
 
 // Priority used for identifying the severity of an event for Logger
@@ -63,23 +61,24 @@ type Logger struct {
 	logger   *log.Logger
 	logs     []string
 
-	prioMsg        chan *priorityMessage
-	quit, quitWait chan bool
-	mut            sync.RWMutex
+	prioMsg  chan *priorityMessage
+	quitWait chan bool
+	mut      sync.RWMutex
 }
 
 // New creates a new Logger.
 func newLogger(out io.Writer, prefix string, flag int, priority int32) *Logger {
-	return &Logger{
+	log := &Logger{
 		priority: priority,
 		prefix:   prefix,
 		logger:   log.New(out, prefix, flag),
 		logs:     make([]string, 0, 5),
-
-		prioMsg:  make(chan *priorityMessage, 4),
-		quit:     nil,
+		prioMsg:  make(chan *priorityMessage, 5),
 		quitWait: make(chan bool),
 	}
+	go log.start()
+
+	return log
 }
 
 // SetPrefix sets the output prefix for the logger.
@@ -127,57 +126,18 @@ func (me *Logger) println(priority int32, v ...interface{}) {
 }
 
 func (me *Logger) start() {
-	me.mut.Lock()
+	defer func() { me.quitWait <- true }()
 
-	if me.quit != nil { // Already running
-		me.mut.Unlock()
-		return
-	}
-
-	me.quit = make(chan bool)
-	me.mut.Unlock()
-
-	for {
-		select {
-		case msg := <-me.prioMsg:
-			me.setFullPrefix(msg.priority)
-			me.logger.Print(msg.message)
-			me.addLog(msg)
-		case <-me.quit:
-			defer func() {
-				me.quit = nil
-				me.quitWait <- true
-			}()
-
-			// Write out pending logs
-			msgRead := 0
-			for ; msgRead < len(me.prioMsg); msgRead++ {
-				select {
-				case msg := <-me.prioMsg:
-					me.setFullPrefix(msg.priority)
-					me.logger.Print(msg.message)
-					me.addLog(msg)
-				default:
-					return
-				}
-			}
-
-			return
-		}
+	for msg := range me.prioMsg {
+		me.setFullPrefix(msg.priority)
+		me.logger.Print(msg.message)
+		me.addLog(msg)
 	}
 }
 
-func (me *Logger) exit() error {
-	timeout := time.After(time.Millisecond * 500)
-
-	select {
-	case me.quit <- true: // Sends block on a nil-value chan, meaning Logger isn't running
-		<-me.quitWait
-	case <-timeout:
-		return errors.New("Timed out while trying to exit")
-	}
-
-	return nil
+func (me *Logger) exit() {
+	close(me.prioMsg)
+	<-me.quitWait
 }
 
 func (me *Logger) addLog(msg *priorityMessage) {
@@ -219,8 +179,7 @@ func (me *Logger) Flags() int {
 	me.mut.RLock()
 	defer me.mut.RUnlock()
 
-	flags := me.logger.Flags()
-	return flags
+	return me.logger.Flags()
 }
 
 // SetFlags sets the output layouts for the logger.
@@ -400,11 +359,13 @@ func (me *Logger) LenLogs() int {
 	me.mut.RLock()
 	defer me.mut.RUnlock()
 
-	len := len(me.logs)
-	return len
+	return len(me.logs)
 }
 
 // Clears saved logs slice, not those stored to disk
 func (me *Logger) ClearLogs() {
-	me.logs = make([]string, 0, 5)
+	me.mut.Lock()
+	defer me.mut.Unlock()
+
+	clear(&me.logs)
 }

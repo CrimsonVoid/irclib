@@ -90,10 +90,10 @@ func (self *Console) Unregister(trigger string) error {
 			continue
 		}
 
-		trigLen := len(self.stTriggers)
-		copy(self.stTriggers[i:], self.stTriggers[i+1:])
+		trigLen := len(self.stTriggers) - 1
+		self.stTriggers[i] = self.stTriggers[trigLen]
 		self.stTriggers[trigLen] = nil
-		self.stTriggers = self.stTriggers[:trigLen-1]
+		self.stTriggers = self.stTriggers[:trigLen]
 
 		return nil
 	}
@@ -112,10 +112,11 @@ func (self *Console) UnregisterRegexp(trigger *regexp.Regexp) error {
 			continue
 		}
 
-		trigLen := len(self.reTriggers)
-		copy(self.reTriggers[i:], self.reTriggers[i+1:])
-		self.reTriggers[trigLen-1] = nil
-		self.reTriggers = self.reTriggers[:trigLen-1]
+		trigLen := len(self.reTriggers) - 1
+
+		self.reTriggers[i] = self.reTriggers[trigLen]
+		self.reTriggers[trigLen] = nil
+		self.reTriggers = self.reTriggers[:trigLen]
 
 		return nil
 	}
