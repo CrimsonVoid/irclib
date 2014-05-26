@@ -23,7 +23,6 @@ type ModManager struct {
 	mut     sync.RWMutex
 	running bool
 
-	// TODO - Move where cons is created
 	cons *console.Console // Console to get input
 
 	Quit chan bool // Quit chan to block until a successful disconnect or force disconnect
@@ -92,7 +91,7 @@ func (self *ModManager) Register(mod *module.Module) error {
 	name := mod.Name()
 
 	if mod.Conn != nil {
-		return errors.New("Module is registered with a ModManager")
+		return errors.New("Module is registered")
 	}
 
 	if name == self.core.Name() {
@@ -358,7 +357,7 @@ func (self *ModManager) Running() bool {
 func (self *ModManager) registerCommands() {
 	// Register console handler for commands
 	re := regexp.MustCompile(`^:(?P<name>\w+)\s(?P<command>.+)$`)
-	self.cons.RegisterRegexp(re, func(s string) {
+	self.cons.Register(re, func(s string) {
 		groups, err := matchGroups(re, s)
 		if err != nil {
 			return
@@ -384,7 +383,7 @@ func (self *ModManager) registerCommands() {
 	})
 
 	re2 := regexp.MustCompile(`^:f(orce\s)?q(uit)?(\s?P<module>.*)?$`)
-	self.cons.RegisterRegexp(re2, func(trigger string) {
+	self.cons.Register(re2, func(trigger string) {
 		self.coreForceDisconnect(trigger)
 	})
 }

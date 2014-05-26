@@ -1,6 +1,7 @@
 package module
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -33,9 +34,23 @@ func newConsole() *Console {
 	}
 }
 
+func (self *Console) Register(trigger interface{}, fn func(string)) error {
+	switch trigger.(type) {
+	case string:
+		return self.registerString(trigger.(string), fn)
+	case *regexp.Regexp:
+		return self.registerRegexp(trigger.(*regexp.Regexp), fn)
+	case regexp.Regexp:
+		re := trigger.(regexp.Regexp)
+		return self.registerRegexp(&re, fn)
+	default:
+		return errors.New("Need a string or regexp.Regexp")
+	}
+}
+
 // Register console commands; strings are lowered. Registered with "command" but triggered
 // as ":moduleName command". Returns an error if 'trigger' is already registered
-func (self *Console) Register(trigger string, fn func(string)) error {
+func (self *Console) registerString(trigger string, fn func(string)) error {
 	trigger = strings.ToLower(trigger)
 
 	self.stMut.Lock()
@@ -58,7 +73,7 @@ func (self *Console) Register(trigger string, fn func(string)) error {
 
 // Register console commands. Registered with "command" but triggered
 // as ":moduleName command". Returns an error if trigger.String() is already registered
-func (self *Console) RegisterRegexp(trigger *regexp.Regexp, fn func(string)) error {
+func (self *Console) registerRegexp(trigger *regexp.Regexp, fn func(string)) error {
 	self.reMut.Lock()
 	defer self.reMut.Unlock()
 

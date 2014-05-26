@@ -65,7 +65,7 @@ func (self *ModManager) regCoreQuit() error {
 
 func (self *ModManager) regCoreForceQuit() error {
 	re := regexp.MustCompile(`^f(orce\s)?quit\s(?P<module>.*)?$`)
-	err := self.core.Console.RegisterRegexp(re, func(trigger string) {
+	err := self.core.Console.Register(re, func(trigger string) {
 		self.coreForceDisconnect(trigger)
 	})
 
@@ -96,7 +96,7 @@ func (self *ModManager) regCoreListModules() error {
 
 func (self *ModManager) regCoreChanManage() error {
 	re := regexp.MustCompile(`^(?P<cmd>join|part)\s(?P<chan>.*)$`)
-	err := self.core.Console.RegisterRegexp(re, func(trigger string) {
+	err := self.core.Console.Register(re, func(trigger string) {
 		groups, _ := matchGroups(re, trigger)
 		channel := groups["chan"]
 		if channel[0] != '#' {
@@ -127,7 +127,7 @@ func (self *ModManager) regCoreAccessList() error {
 
 func (self *ModManager) regCoreAccessManip() error {
 	re := regexp.MustCompile(`^access\s(?P<cmd>add|rem)\s(?P<group>.*)\s(?P<nick>.*)$`)
-	err := self.core.Console.RegisterRegexp(re, func(trigger string) {
+	err := self.core.Console.Register(re, func(trigger string) {
 		groups, _ := matchGroups(re, trigger)
 		msg := ""
 

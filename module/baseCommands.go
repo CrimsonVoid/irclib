@@ -79,7 +79,7 @@ func (self *Module) registerInfo() error {
 func (self *Module) registerAdd() error {
 	re := regexp.MustCompile(`^(?i)(?P<mode>allow|deny)\s(?P<nick>.*)$`)
 
-	err := self.Console.RegisterRegexp(re, func(s string) {
+	err := self.Console.Register(re, func(s string) {
 		s = strings.ToLower(s)
 		// Can ignore error since match is guaranteed
 		groups, _ := matchGroups(re, s)
@@ -117,7 +117,7 @@ func (self *Module) registerAdd() error {
 func (self *Module) registerRem() error {
 	re := regexp.MustCompile(`^(?i)rem\s(?P<mode>allow|deny)\s(?P<nick>.*)$`)
 
-	err := self.Console.RegisterRegexp(re, func(s string) {
+	err := self.Console.Register(re, func(s string) {
 		s = strings.ToLower(s)
 
 		// Can ignore error since match is already guaranteed
@@ -156,7 +156,7 @@ func (self *Module) registerRem() error {
 func (self *Module) registerClear() error {
 	re := regexp.MustCompile(`^(?i)clear\s(?P<mode>allow|deny)(?P<type>user|chan)$`)
 
-	err := self.Console.RegisterRegexp(re, func(s string) {
+	err := self.Console.Register(re, func(s string) {
 		s = strings.ToLower(s)
 
 		// Can ignore error since match is already guaranteed
@@ -187,7 +187,7 @@ func (self *Module) registerClear() error {
 func (self *Module) registerList() error {
 	re := regexp.MustCompile(`^(?i)list\s(?P<mode>allow|deny)(?P<type>user|chan)$`)
 
-	err := self.Console.RegisterRegexp(re, func(s string) {
+	err := self.Console.Register(re, func(s string) {
 		s = strings.ToLower(s)
 
 		// Can ignore error since match is already guaranteed
@@ -222,7 +222,7 @@ func (self *Module) registerList() error {
 func (self *Module) registerEnable() error {
 	re := regexp.MustCompile(`^(?i)(?P<cmd>en|dis)able$`)
 
-	err := self.Console.RegisterRegexp(re, func(s string) {
+	err := self.Console.Register(re, func(s string) {
 		s = strings.ToLower(s)
 
 		groups, _ := matchGroups(re, s)
@@ -262,7 +262,7 @@ func (self *Module) registerLogs() error {
 func (self *Module) registerLogs2() error {
 	re := regexp.MustCompile(`^(?i)(?P<cmd>head|tail)(\s(?P<num>-?\d+))?$`)
 
-	err := self.Console.RegisterRegexp(re, func(s string) {
+	err := self.Console.Register(re, func(s string) {
 		s = strings.ToLower(s)
 		groups, _ := matchGroups(re, s)
 

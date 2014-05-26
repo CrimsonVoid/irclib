@@ -246,9 +246,21 @@ func (self *Module) ForceExit() []error {
 	return errs
 }
 
+func (self *Module) Register(eventMode Event, trigger interface{}, fn func(*irc.Line)) {
+	switch trigger.(type) {
+	case string:
+		self.registerString(eventMode, trigger.(string), fn)
+	case *regexp.Regexp:
+		self.registerRegexp(eventMode, trigger.(*regexp.Regexp), fn)
+	case regexp.Regexp:
+		re := trigger.(regexp.Regexp)
+		self.registerRegexp(eventMode, &re, fn)
+	}
+}
+
 // Register a function that is called when an Event of eventMode is triggered and
 // trigger equals input. trigger is lowered before registering.
-func (self *Module) Register(eventMode Event, trigger string, fn func(*irc.Line)) {
+func (self *Module) registerString(eventMode Event, trigger string, fn func(*irc.Line)) {
 	trigger = strings.ToLower(trigger)
 	eventMode = Event(strings.ToUpper(string(eventMode)))
 
@@ -265,7 +277,7 @@ func (self *Module) Register(eventMode Event, trigger string, fn func(*irc.Line)
 
 // Register a function that is called when an Event of eventMode is triggered and
 // trigger equals input.
-func (self *Module) RegisterRegexp(eventMode Event, trigger *regexp.Regexp, fn func(*irc.Line)) {
+func (self *Module) registerRegexp(eventMode Event, trigger *regexp.Regexp, fn func(*irc.Line)) {
 	eventMode = Event(strings.ToUpper(string(eventMode)))
 
 	appendEvent(eventMode)
