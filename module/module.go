@@ -340,19 +340,18 @@ func (self *Module) StringCommands() []string {
 	output := make([]string, 0, len(self.stTriggers)+len(self.reTriggers))
 
 	self.stMut.RLock()
-	self.reMut.RLock()
-	defer self.stMut.RUnlock()
-	defer self.reMut.RUnlock()
-
-	for evTrig, _ := range self.stTriggers {
+	for evTrig := range self.stTriggers {
 		output = append(output, fmt.Sprintf("[%-12v] %v", evTrig.event, evTrig.trigger))
 	}
+	self.stMut.RUnlock()
 
+	self.reMut.RLock()
 	for event, reS := range self.reTriggers {
 		for _, re := range reS {
 			output = append(output, fmt.Sprintf("[%-12v] %v", event, re.trigger))
 		}
 	}
+	self.reMut.RUnlock()
 
 	return output
 }

@@ -44,7 +44,7 @@ func (self *access) Groups(groups ...string) map[string][]string {
 	if len(groups) == 0 {
 		groups = make([]string, 0, len(self.list))
 
-		for grp, _ := range self.list {
+		for grp := range self.list {
 			groups = append(groups, grp)
 		}
 	}
