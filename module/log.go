@@ -106,6 +106,9 @@ func (me *Logger) setFullPrefix(priority int32) {
 
 // Calls Output to print to the logger and append message to logs slice
 func (me *Logger) print(priority int32, v ...interface{}) {
+	// Recover in case channel is closed
+	defer func() { recover() }()
+
 	if priority <= me.Priority() {
 		me.prioMsg <- &priorityMessage{priority, fmt.Sprint(v...)}
 	}
@@ -113,6 +116,9 @@ func (me *Logger) print(priority int32, v ...interface{}) {
 
 // Calls Output to printf to the logger and append message to logs slice
 func (me *Logger) printf(priority int32, format string, v ...interface{}) {
+	// Recover in case channel is closed
+	defer func() { recover() }()
+
 	if priority <= me.Priority() {
 		me.prioMsg <- &priorityMessage{priority, fmt.Sprintf(format, v...)}
 	}
@@ -120,6 +126,9 @@ func (me *Logger) printf(priority int32, format string, v ...interface{}) {
 
 // Calls Output to println to the logger and append message to logs slice
 func (me *Logger) println(priority int32, v ...interface{}) {
+	// Recover in case channel is closed
+	defer func() { recover() }()
+
 	if priority <= me.Priority() {
 		me.prioMsg <- &priorityMessage{priority, fmt.Sprintln(v...)}
 	}
@@ -136,6 +145,8 @@ func (me *Logger) start() {
 }
 
 func (me *Logger) exit() {
+	// RACE - Go's race detector might say there is a race closing and writing
+	// me.prioMsg but, as far as I can tell, it should be alright
 	close(me.prioMsg)
 	<-me.quitWait
 }
