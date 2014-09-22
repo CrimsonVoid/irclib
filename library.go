@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/crimsonvoid/console"
+	"github.com/crimsonvoid/console/styles"
 	"github.com/crimsonvoid/irclib/module"
 	irc "github.com/fluffle/goirc/client"
 )
@@ -201,9 +202,8 @@ func (self *ModManager) Connect() map[string]error {
 
 	self.running = true
 
-	consLog.Printf("%v%v connected to %v%v\n",
-		console.C_FgGreen, self.Conn.Config().Me.Nick, self.Conn.Config().Server,
-		console.C_Reset)
+	consLog.Println(styles.Green.Fg("%v connected to %v",
+		self.Conn.Config().Me.Nick, self.Conn.Config().Server))
 	self.core.Logger.Infof("%v connected to %v\n",
 		self.Conn.Config().Me.Nick, self.Conn.Config().Server)
 

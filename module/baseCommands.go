@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/crimsonvoid/console"
+	"github.com/crimsonvoid/console/styles"
 )
 
 // Register commands, logs errors, and continues
@@ -33,9 +33,9 @@ func (self *Module) registerBaseCommands() {
 // Print info about module. Triggerd with 'info'
 func (self *Module) registerInfo() error {
 	err := self.Console.Register("info", func(s string) {
-		color := console.C_FgGreen
+		color := styles.Green
 		if !self.Enabled() {
-			color = console.C_FgRed
+			color = styles.Red
 		}
 
 		strOut := ""
@@ -48,7 +48,8 @@ func (self *Module) registerInfo() error {
 		unDU, dnyUsr := self.GetRODenyed(UC_User)
 		unDC, dnyChn := self.GetRODenyed(UC_Chan)
 
-		consLog.Printf("%v%v%v\n\t%v\n%v"+
+		consLog.Printf("%v"+
+			"\n\t%v\n%v"+
 			"\n\tIRC Commands\n\t\t%v"+
 			"\n\tConsole Commands\n\t\t%v\n\n"+
 
@@ -58,8 +59,8 @@ func (self *Module) registerInfo() error {
 			"\tAllowed Chans: %v\n"+
 			"\tBlocked Chans: %v\n",
 
-			color, console.C_Reset, self.Name(), self.Description(),
-			strOut,
+			color.Fg("%v", self.Name()),
+			self.Description(), strOut,
 			strings.Join(self.StringCommands(), "\n\t\t"),
 			strings.Join(self.Console.String(), "\n\t\t"),
 			alwUsr, dnyUsr, alwChn, dnyChn,

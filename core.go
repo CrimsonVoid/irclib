@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/crimsonvoid/console"
+	"github.com/crimsonvoid/console/styles"
 	"github.com/crimsonvoid/irclib/module"
 )
 
@@ -79,16 +79,17 @@ func (self *ModManager) regCoreListModules() error {
 
 		msg := ""
 		for _, mod := range self.modules {
-			color := console.C_FgGreen
+			color := styles.Green
 			if !mod.Enabled() {
-				color = console.C_FgRed
+				color = styles.Red
 			}
 
-			msg += fmt.Sprintf("%v%v%%[1]v - %v\n",
-				color, mod.Name(), mod.Description())
+			msg += fmt.Sprintf("%v - %v\n",
+				color.Fg("%v", mod.Name()),
+				mod.Description())
 		}
 
-		consLog.Printf(msg, console.C_Reset)
+		consLog.Print(msg)
 	})
 
 	return err
@@ -156,14 +157,14 @@ func (self *ModManager) coreDisconnect() {
 	errors := self.Disconnect()
 
 	if len(errors) == 0 {
-		consLog.Printf("%vDisconnected without errors%v\n", console.C_FgGreen, console.C_Reset)
+		consLog.Println(styles.Green.Fg("Disconnected without errors"))
+
 		self.Quit <- true
 
 		return
 	}
 
-	out := fmt.Sprintf("%vErrors when attempting to disconnect%v\n",
-		console.C_FgRed, console.C_Reset)
+	out := styles.Red.Fg("Errors when attempting to disconnect\n")
 	for modName, err := range errors {
 		out += fmt.Sprintf("  %v: %v\n", modName, err)
 	}
@@ -184,22 +185,21 @@ func (self *ModManager) coreForceDisconnect(trigger string) {
 	if modName, ok := groups["module"]; ok {
 		errs := self.ForceDisconnectModule(modName)
 		if len(errs) == 0 {
-			consLog.Printf("%vForce disconnected module %v without errors%v\n",
-				console.C_FgGreen, modName, console.C_Reset)
+			consLog.Println(styles.Green.Fg("Force disconnected module %v without errors",
+				modName))
 
 			return
 		}
 
 		errMap[modName] = errs
 	} else if errMap = self.ForceDisconnect(); len(errMap) == 0 {
-		consLog.Printf("%vForce disconnected without errors%v\n",
-			console.C_FgGreen, console.C_Reset)
+		consLog.Println(styles.Green.Fg("Force disconnected without errors"))
 
 		return
 	}
 
-	out := fmt.Sprintf("%vErrors when attempting to force disconnect %v%v\n",
-		console.C_FgRed, groups["module"], console.C_Reset)
+	out := styles.Red.Fg("Errors when attempting to force disconnect %v\n",
+		groups["module"])
 
 	for modName, errs := range errMap {
 		errStr := fmt.Sprintf("  %v", modName)
