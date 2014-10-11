@@ -69,6 +69,12 @@ func inSlice(list []string, target string) bool {
 	return false
 }
 
+func toLowerSlice(list []string) {
+	for i, str := range list {
+		list[i] = strings.ToLower(str)
+	}
+}
+
 // Helper function to match named groups
 func matchGroups(reg *regexp.Regexp, s string) (map[string]string, error) {
 	groups := make(map[string]string)
@@ -85,10 +91,4 @@ func matchGroups(reg *regexp.Regexp, s string) (map[string]string, error) {
 	}
 
 	return groups, nil
-}
-
-func toLowerSlice(list []string) {
-	for i, str := range list {
-		list[i] = strings.ToLower(str)
-	}
 }

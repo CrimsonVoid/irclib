@@ -37,9 +37,6 @@ type Module struct {
 	// Errors are logged to to the module Logger
 	Preconnect, Connected, Disconnect func() error
 
-	// Function used for ":moduleName info" console command
-	String func() string
-
 	running bool
 	file    *os.File      // File to write logs to
 	bufFile *bufio.Writer // Buffered writer of Module.file
@@ -89,15 +86,7 @@ func (self *ModuleInfo) NewModule() (*Module, error) {
 
 	mod := &Module{
 		moduleConfig: moduleConfig{
-			name:        self.Name,
-			description: self.Description,
-			logDir:      self.LogDir,
-			enabled:     self.Enabled,
-
-			allowUser: self.AllowUser,
-			denyUser:  self.DenyUser,
-			allowChan: self.AllowChan,
-			denyChan:  self.DenyChan,
+			m: *self,
 		},
 
 		stTriggers: make(map[eventTrigger][]func(*irc.Line)),
@@ -150,7 +139,7 @@ func (self *Module) Start() error {
 	defer self.mu.Unlock()
 
 	if self.running {
-		return fmt.Errorf("Module.Start(): %v is already running", self.name)
+		return fmt.Errorf("Module.Start(): %v is already running", self.m.Name)
 	}
 
 	if self.file == nil || self.bufFile == nil {
@@ -180,7 +169,7 @@ func (self *Module) Exit() error {
 	defer self.mu.Unlock()
 
 	if !self.running {
-		return fmt.Errorf("Module.Exit(): %v is not running", self.name)
+		return fmt.Errorf("Module.Exit(): %v is not running", self.m.Name)
 	}
 
 	if self.Disconnect != nil {
@@ -215,7 +204,7 @@ func (self *Module) ForceExit() []error {
 	errs := make([]error, 0, 5)
 
 	if !self.running {
-		errs = append(errs, fmt.Errorf("Module.ForceExit(): %v is not running", self.name))
+		errs = append(errs, fmt.Errorf("Module.ForceExit(): %v is not running", self.m.Name))
 
 		return errs
 	}
@@ -363,12 +352,12 @@ func (self *Module) createLogger() error {
 		self.SetLogDir(lDir + "/")
 	}
 
-	if err := os.MkdirAll(self.LogDir(), 755); err != nil || os.IsNotExist(err) {
+	if err := os.MkdirAll(self.LogDir(), 0755); err != nil || os.IsNotExist(err) {
 		return err
 	}
 
 	logName := fmt.Sprintf("%v%v.log", self.LogDir(), self.Name())
-	file, err := os.OpenFile(logName, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 644)
+	file, err := os.OpenFile(logName, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}

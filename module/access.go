@@ -1,7 +1,7 @@
 package module
 
 import (
-	"errors"
+	"fmt"
 	"sync"
 )
 
@@ -17,19 +17,19 @@ const (
 // allow(User|Chan) slices
 func (self *moduleConfig) Allow(target string) error {
 	if len(target) == 0 {
-		return errors.New("moduleConfig.Allow(): Length of string " + target + " is 0")
+		return fmt.Errorf("moduleConfig.Allow(): Length of string is 0")
 	}
 
 	if target[0] == '#' {
-		self.chanMut.Lock()
-		defer self.chanMut.Unlock()
+		self.mu.Lock()
+		defer self.mu.Unlock()
 
-		return add(&self.allowChan, target)
+		return add(&self.m.AllowChan, target)
 	} else {
-		self.userMut.Lock()
-		defer self.userMut.Unlock()
+		self.mu.Lock()
+		defer self.mu.Unlock()
 
-		return add(&self.allowUser, target)
+		return add(&self.m.AllowUser, target)
 	}
 }
 
@@ -38,19 +38,19 @@ func (self *moduleConfig) Allow(target string) error {
 // deny(User|Chan) slices
 func (self *moduleConfig) Deny(target string) error {
 	if len(target) == 0 {
-		return errors.New("moduleConfig.Deny(): Length of string " + target + " is 0")
+		return fmt.Errorf("moduleConfig.Deny(): Length of string is 0")
 	}
 
 	if target[0] == '#' {
-		self.chanMut.Lock()
-		defer self.chanMut.Unlock()
+		self.mu.Lock()
+		defer self.mu.Unlock()
 
-		return add(&self.denyChan, target)
+		return add(&self.m.DenyChan, target)
 	} else {
-		self.userMut.Lock()
-		defer self.userMut.Unlock()
+		self.mu.Lock()
+		defer self.mu.Unlock()
 
-		return add(&self.denyUser, target)
+		return add(&self.m.DenyUser, target)
 	}
 }
 
@@ -58,19 +58,19 @@ func (self *moduleConfig) Deny(target string) error {
 // with '#'. Returns an error if 'target' is not in the slice
 func (self *moduleConfig) RemAllowed(target string) error {
 	if len(target) == 0 {
-		return errors.New("moduleConfig.RemAllowed(): Length of string " + target + " is 0")
+		return fmt.Errorf("moduleConfig.RemAllowed(): Length of string is 0")
 	}
 
 	if target[0] == '#' {
-		self.chanMut.Lock()
-		defer self.chanMut.Unlock()
+		self.mu.Lock()
+		defer self.mu.Unlock()
 
-		return remove(&self.allowChan, target)
+		return remove(&self.m.AllowChan, target)
 	} else {
-		self.userMut.Lock()
-		defer self.userMut.Unlock()
+		self.mu.Lock()
+		defer self.mu.Unlock()
 
-		return remove(&self.allowUser, target)
+		return remove(&self.m.AllowUser, target)
 	}
 }
 
@@ -78,19 +78,19 @@ func (self *moduleConfig) RemAllowed(target string) error {
 // with '#'. Returns an error if 'target' is not in the slice
 func (self *moduleConfig) RemDenyed(target string) error {
 	if len(target) == 0 {
-		return errors.New("moduleConfig.RemDenyed(): Length of string " + target + " is 0")
+		return fmt.Errorf("moduleConfig.RemDenyed(): Length of string is 0")
 	}
 
 	if target[0] == '#' {
-		self.chanMut.Lock()
-		defer self.chanMut.Unlock()
+		self.mu.Lock()
+		defer self.mu.Unlock()
 
-		return remove(&self.denyChan, target)
+		return remove(&self.m.DenyChan, target)
 	} else {
-		self.userMut.Lock()
-		defer self.userMut.Unlock()
+		self.mu.Lock()
+		defer self.mu.Unlock()
 
-		return remove(&self.denyUser, target)
+		return remove(&self.m.DenyUser, target)
 	}
 }
 
@@ -99,15 +99,15 @@ func (self *moduleConfig) RemDenyed(target string) error {
 func (self *moduleConfig) GetAllowed(u userChan) []string {
 	switch u {
 	case UC_User:
-		self.userMut.RLock()
-		defer self.userMut.RUnlock()
+		self.mu.RLock()
+		defer self.mu.RUnlock()
 
-		return copySlice(self.allowUser)
+		return copySlice(self.m.AllowUser)
 	default: // case UC_Chan:
-		self.chanMut.RLock()
-		defer self.chanMut.RUnlock()
+		self.mu.RLock()
+		defer self.mu.RUnlock()
 
-		return copySlice(self.allowChan)
+		return copySlice(self.m.AllowChan)
 	}
 }
 
@@ -116,39 +116,39 @@ func (self *moduleConfig) GetAllowed(u userChan) []string {
 func (self *moduleConfig) GetDenyed(u userChan) []string {
 	switch u {
 	case UC_User:
-		self.userMut.RLock()
-		defer self.userMut.RUnlock()
+		self.mu.RLock()
+		defer self.mu.RUnlock()
 
-		return copySlice(self.denyUser)
+		return copySlice(self.m.DenyUser)
 	default: // case UC_Chan:
-		self.chanMut.RLock()
-		defer self.chanMut.RUnlock()
+		self.mu.RLock()
+		defer self.mu.RUnlock()
 
-		return copySlice(self.denyChan)
+		return copySlice(self.m.DenyChan)
 	}
 }
 
 // Returns a copy of the appropriate slice header to avoid copies. This is a
 // promise by the user to not modify the slice and enforced by a RLock() on the
 // slice. The lock is released by closing the chan or sending a boolean value
-func (self *moduleConfig) GetROAllowed(u userChan) (chan<- bool, []string) {
+func (self *moduleConfig) GetROAllowed(u userChan) ([]string, chan<- bool) {
 	switch u {
 	case UC_User:
-		return roLock(&self.userMut), self.allowUser
+		return self.m.AllowUser, roLock(&self.mu)
 	default: // case UC_Chan:
-		return roLock(&self.chanMut), self.allowChan
+		return self.m.AllowChan, roLock(&self.mu)
 	}
 }
 
 // Returns a copy of the appropriate slice header to avoid copies. This is a
 // promise by the user to not modify the slice and enforced by a RLock() on the
 // slice. The lock is released by closing the chan or sending a boolean value
-func (self *moduleConfig) GetRODenyed(u userChan) (chan<- bool, []string) {
+func (self *moduleConfig) GetRODenyed(u userChan) ([]string, chan<- bool) {
 	switch u {
 	case UC_User:
-		return roLock(&self.userMut), self.denyUser
+		return self.m.DenyUser, roLock(&self.mu)
 	default: // case UC_Chan:
-		return roLock(&self.chanMut), self.denyChan
+		return self.m.DenyChan, roLock(&self.mu)
 	}
 }
 
@@ -156,15 +156,15 @@ func (self *moduleConfig) GetRODenyed(u userChan) (chan<- bool, []string) {
 func (self *moduleConfig) ClearAllowed(u userChan) {
 	switch u {
 	case UC_User:
-		self.userMut.Lock()
-		defer self.userMut.Unlock()
+		self.mu.Lock()
+		defer self.mu.Unlock()
 
-		clear(&self.allowUser)
+		clear(&self.m.AllowUser)
 	default: // case UC_Chan:
-		self.chanMut.Lock()
-		defer self.chanMut.Unlock()
+		self.mu.Lock()
+		defer self.mu.Unlock()
 
-		clear(&self.allowChan)
+		clear(&self.m.AllowChan)
 	}
 }
 
@@ -172,15 +172,15 @@ func (self *moduleConfig) ClearAllowed(u userChan) {
 func (self *moduleConfig) ClearDenyed(u userChan) {
 	switch u {
 	case UC_User:
-		self.userMut.Lock()
-		defer self.userMut.Unlock()
+		self.mu.Lock()
+		defer self.mu.Unlock()
 
-		clear(&self.denyUser)
+		clear(&self.m.DenyUser)
 	default: // case UC_Chan:
-		self.chanMut.Lock()
-		defer self.chanMut.Unlock()
+		self.mu.Lock()
+		defer self.mu.Unlock()
 
-		clear(&self.denyChan)
+		clear(&self.m.DenyChan)
 	}
 }
 
@@ -191,15 +191,15 @@ func (self *moduleConfig) InAllowed(target string) bool {
 	}
 
 	if target[0] == '#' {
-		self.chanMut.RLock()
-		defer self.chanMut.RUnlock()
+		self.mu.RLock()
+		defer self.mu.RUnlock()
 
-		return inSlice(self.allowChan, target)
+		return inSlice(self.m.AllowChan, target)
 	} else {
-		self.userMut.RLock()
-		defer self.userMut.RUnlock()
+		self.mu.RLock()
+		defer self.mu.RUnlock()
 
-		return inSlice(self.allowUser, target)
+		return inSlice(self.m.AllowUser, target)
 	}
 }
 
@@ -210,15 +210,15 @@ func (self *moduleConfig) InDenyed(target string) bool {
 	}
 
 	if target[0] == '#' {
-		self.chanMut.RLock()
-		defer self.chanMut.RUnlock()
+		self.mu.RLock()
+		defer self.mu.RUnlock()
 
-		return inSlice(self.denyChan, target)
+		return inSlice(self.m.DenyChan, target)
 	} else {
-		self.userMut.RLock()
-		defer self.userMut.RUnlock()
+		self.mu.RLock()
+		defer self.mu.RUnlock()
 
-		return inSlice(self.denyUser, target)
+		return inSlice(self.m.DenyUser, target)
 	}
 }
 
@@ -226,15 +226,15 @@ func (self *moduleConfig) InDenyed(target string) bool {
 func (self *moduleConfig) LenAllowed(u userChan) int {
 	switch u {
 	case UC_User:
-		self.userMut.RLock()
-		defer self.userMut.RUnlock()
+		self.mu.RLock()
+		defer self.mu.RUnlock()
 
-		return len(self.allowUser)
+		return len(self.m.AllowUser)
 	default: // case UC_Chan:
-		self.chanMut.Lock()
-		defer self.chanMut.Unlock()
+		self.mu.Lock()
+		defer self.mu.Unlock()
 
-		return len(self.allowChan)
+		return len(self.m.AllowChan)
 	}
 }
 
@@ -242,15 +242,15 @@ func (self *moduleConfig) LenAllowed(u userChan) int {
 func (self *moduleConfig) LenDenyed(u userChan) int {
 	switch u {
 	case UC_User:
-		self.userMut.RLock()
-		defer self.userMut.RUnlock()
+		self.mu.RLock()
+		defer self.mu.RUnlock()
 
-		return len(self.denyUser)
+		return len(self.m.DenyUser)
 	default: // case UC_Chan:
-		self.chanMut.Lock()
-		defer self.chanMut.Unlock()
+		self.mu.Lock()
+		defer self.mu.Unlock()
 
-		return len(self.denyChan)
+		return len(self.m.DenyChan)
 	}
 }
 

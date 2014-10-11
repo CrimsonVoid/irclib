@@ -1,7 +1,6 @@
 package module
 
 import (
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -39,14 +38,11 @@ func (self *Module) registerInfo() error {
 		}
 
 		strOut := ""
-		if self.String != nil {
-			strOut = fmt.Sprintf("\n\t%v\n", self.String())
-		}
 
-		unAU, alwUsr := self.GetROAllowed(UC_User)
-		unAC, alwChn := self.GetROAllowed(UC_Chan)
-		unDU, dnyUsr := self.GetRODenyed(UC_User)
-		unDC, dnyChn := self.GetRODenyed(UC_Chan)
+		alwUsr, unAU := self.GetROAllowed(UC_User)
+		alwChn, unAC := self.GetROAllowed(UC_Chan)
+		dnyUsr, unDU := self.GetRODenyed(UC_User)
+		dnyChn, unDC := self.GetRODenyed(UC_Chan)
 
 		consLog.Printf("%v"+
 			"\n\t%v\n%v"+
@@ -78,7 +74,7 @@ func (self *Module) registerInfo() error {
 
 // Allow or deny 'nick'
 func (self *Module) registerAdd() error {
-	re := regexp.MustCompile(`^(?i)(?P<mode>allow|deny)\s(?P<nick>.*)$`)
+	re := regexp.MustCompile(`^(?i)(?P<mode>allow|deny) (?P<nick>.*)$`)
 
 	err := self.Console.Register(re, func(s string) {
 		s = strings.ToLower(s)
@@ -116,7 +112,7 @@ func (self *Module) registerAdd() error {
 
 // Remove 'nick' from allow or deny slices
 func (self *Module) registerRem() error {
-	re := regexp.MustCompile(`^(?i)rem\s(?P<mode>allow|deny)\s(?P<nick>.*)$`)
+	re := regexp.MustCompile(`^(?i)rem (?P<mode>allow|deny) (?P<nick>.*)$`)
 
 	err := self.Console.Register(re, func(s string) {
 		s = strings.ToLower(s)
@@ -155,7 +151,7 @@ func (self *Module) registerRem() error {
 
 // Clear (allow|deny)(user|chan)
 func (self *Module) registerClear() error {
-	re := regexp.MustCompile(`^(?i)clear\s(?P<mode>allow|deny)(?P<type>user|chan)$`)
+	re := regexp.MustCompile(`^(?i)clear (?P<mode>allow|deny)(?P<type>user|chan)$`)
 
 	err := self.Console.Register(re, func(s string) {
 		s = strings.ToLower(s)
@@ -186,7 +182,7 @@ func (self *Module) registerClear() error {
 
 // Print (allow|deny)(user|chan) slice
 func (self *Module) registerList() error {
-	re := regexp.MustCompile(`^(?i)list\s(?P<mode>allow|deny)(?P<type>user|chan)$`)
+	re := regexp.MustCompile(`^(?i)list (?P<mode>allow|deny)(?P<type>user|chan)$`)
 
 	err := self.Console.Register(re, func(s string) {
 		s = strings.ToLower(s)
@@ -205,10 +201,10 @@ func (self *Module) registerList() error {
 
 		switch groups["mode"] {
 		case "allow":
-			unlock, list = self.GetROAllowed(lsType)
+			list, unlock = self.GetROAllowed(lsType)
 			msg = "Allowed " + msg
 		default: // case "deny"
-			unlock, list = self.GetRODenyed(lsType)
+			list, unlock = self.GetRODenyed(lsType)
 			msg = "Denyed " + msg
 		}
 
@@ -261,7 +257,7 @@ func (self *Module) registerLogs() error {
 
 // Print logs
 func (self *Module) registerLogs2() error {
-	re := regexp.MustCompile(`^(?i)(?P<cmd>head|tail)(\s(?P<num>-?\d+))?$`)
+	re := regexp.MustCompile(`^(?i)(?P<cmd>head|tail)( (?P<num>-?\d+))?$`)
 
 	err := self.Console.Register(re, func(s string) {
 		s = strings.ToLower(s)

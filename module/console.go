@@ -34,15 +34,15 @@ func newConsole() *Console {
 	}
 }
 
+// Register a `string` or `regexp.Regexp` returning an error if `trigger` is already registered
 func (self *Console) Register(trigger interface{}, fn func(string)) error {
-	switch trigger.(type) {
+	switch t := trigger.(type) {
 	case string:
-		return self.registerString(trigger.(string), fn)
+		return self.registerString(t, fn)
 	case *regexp.Regexp:
-		return self.registerRegexp(trigger.(*regexp.Regexp), fn)
+		return self.registerRegexp(t, fn)
 	case regexp.Regexp:
-		re := trigger.(regexp.Regexp)
-		return self.registerRegexp(&re, fn)
+		return self.registerRegexp(&t, fn)
 	default:
 		return errors.New("Need a string or regexp.Regexp")
 	}
@@ -62,11 +62,7 @@ func (self *Console) registerString(trigger string, fn func(string)) error {
 		}
 	}
 
-	stM := &st{
-		trigger: trigger,
-		fn:      fn,
-	}
-	self.stTriggers = append(self.stTriggers, stM)
+	self.stTriggers = append(self.stTriggers, &st{trigger, fn})
 
 	return nil
 }
@@ -84,17 +80,27 @@ func (self *Console) registerRegexp(trigger *regexp.Regexp, fn func(string)) err
 		}
 	}
 
-	reM := &reCon{
-		trigger: trigger,
-		fn:      fn,
-	}
-	self.reTriggers = append(self.reTriggers, reM)
+	self.reTriggers = append(self.reTriggers, &reCon{trigger, fn})
 
 	return nil
 }
 
+// Unregister a `string` or `regexp.Regexp` returning an error if `trigger` was not registered
+func (self *Console) Unregister(trigger interface{}) error {
+	switch t := trigger.(type) {
+	case string:
+		return self.unregisterString(t)
+	case *regexp.Regexp:
+		return self.unregisterRegexp(t)
+	case regexp.Regexp:
+		return self.unregisterRegexp(&t)
+	default:
+		return errors.New("Need a string or regexp.Regexp")
+	}
+}
+
 // Unregister trigger. Return an error if trigger is not registered
-func (self *Console) Unregister(trigger string) error {
+func (self *Console) unregisterString(trigger string) error {
 	trigger = strings.ToLower(trigger)
 
 	self.stMut.Lock()
@@ -117,7 +123,7 @@ func (self *Console) Unregister(trigger string) error {
 }
 
 // Unregister trigger. Return an error if trigger.String() is not registered
-func (self *Console) UnregisterRegexp(trigger *regexp.Regexp) error {
+func (self *Console) unregisterRegexp(trigger *regexp.Regexp) error {
 	self.reMut.Lock()
 	defer self.reMut.Unlock()
 
@@ -128,7 +134,6 @@ func (self *Console) UnregisterRegexp(trigger *regexp.Regexp) error {
 		}
 
 		trigLen := len(self.reTriggers) - 1
-
 		self.reTriggers[i] = self.reTriggers[trigLen]
 		self.reTriggers[trigLen] = nil
 		self.reTriggers = self.reTriggers[:trigLen]
