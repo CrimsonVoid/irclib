@@ -8,23 +8,34 @@ import (
 	irc "github.com/fluffle/goirc/client"
 )
 
-type ServerInfo struct {
-	Nick, Ident, Name string
-
-	Pass, Server string
-	SSL          bool
-	Port         int
-
-	Version, QuitMessage string
-	PingFreq, SplitLen   int
-	Flood, Tracking      bool
-
-	Botinfo BotInfo
-}
-
 type BotInfo struct {
 	Chans  []string
 	Access access
+}
+
+type Network struct {
+	SSL      bool
+	Server   string
+	Port     int
+	PingFreq int
+	SplitLen int
+	Flood    bool
+	Tracking bool
+}
+
+type Groups struct {
+	Users []string
+}
+
+type ServerInfo struct {
+	Nick, Ident, Name string
+	Pass              string
+	Channels          []string
+	Version           string
+	QuitMessage       string
+
+	Network Network
+	Access  map[string]Groups
 }
 
 func (serverInfo *ServerInfo) configServer() (*irc.Config, error) {
@@ -32,7 +43,7 @@ func (serverInfo *ServerInfo) configServer() (*irc.Config, error) {
 	switch {
 	case serverInfo.Nick == "":
 		return nil, errors.New("Specify a Nick in the config file")
-	case serverInfo.Server == "":
+	case serverInfo.Network.Server == "":
 		return nil, errors.New("Specify a Server in the config file")
 	}
 
@@ -47,8 +58,10 @@ func (serverInfo *ServerInfo) configServer() (*irc.Config, error) {
 
 	cfg.Pass = serverInfo.Pass
 	// if serverInfo.SSL is true, user will have to configure it themself
-	cfg.SSL = serverInfo.SSL
-	cfg.Server = fmt.Sprintf("%v:%v", serverInfo.Server, serverInfo.Port)
+	cfg.SSL = serverInfo.Network.SSL
+	cfg.Server = fmt.Sprintf("%v:%v",
+		serverInfo.Network.Server,
+		serverInfo.Network.Port)
 
 	if serverInfo.Version != "" {
 		cfg.Version = serverInfo.Version
@@ -56,14 +69,14 @@ func (serverInfo *ServerInfo) configServer() (*irc.Config, error) {
 	if serverInfo.QuitMessage != "" {
 		cfg.QuitMessage = serverInfo.QuitMessage
 	}
-	if serverInfo.PingFreq > 0 {
-		cfg.PingFreq = time.Duration(serverInfo.PingFreq) * time.Second
+	if serverInfo.Network.PingFreq > 0 {
+		cfg.PingFreq = time.Duration(serverInfo.Network.PingFreq) * time.Second
 	}
-	if serverInfo.SplitLen > 0 {
-		cfg.SplitLen = serverInfo.SplitLen
+	if serverInfo.Network.SplitLen > 0 {
+		cfg.SplitLen = serverInfo.Network.SplitLen
 	}
 	// Default value of bool is false which is default for cfg.Flood
-	cfg.Flood = serverInfo.Flood
+	cfg.Flood = serverInfo.Network.Flood
 
 	return cfg, nil
 }

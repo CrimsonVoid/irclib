@@ -4,9 +4,8 @@ package module
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"github.com/BurntSushi/toml"
 	"os"
 	"regexp"
 	"strings"
@@ -49,17 +48,11 @@ type Module struct {
 	Logger  *Logger
 }
 
-// Read a JSON file and return a configured Module. Errors indicate a failure to
+// Read a TOML file and return a configured Module. Errors indicate a failure to
 // parse the file or an incomplete configuration
 func New(configFile string) (*Module, error) {
-	file, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		return nil, err
-	}
-
 	modInfo := new(ModuleInfo)
-	err = json.Unmarshal(file, modInfo)
-	if err != nil {
+	if _, err := toml.DecodeFile(configFile, modInfo); err != nil {
 		return nil, err
 	}
 

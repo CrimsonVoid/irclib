@@ -4,7 +4,7 @@ import (
 	"sync"
 )
 
-// ModuleInfo repersents configuration fields that can be loaded from JSON files
+// ModuleInfo repersents configuration fields that can be loaded from TOML files
 type ModuleInfo struct {
 	Name        string // Unique name or registering and triggering console commands
 	Description string // Description of module

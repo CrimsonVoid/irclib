@@ -1,14 +1,13 @@
 package irclib
 
 import (
-	"encoding/json"
 	"errors"
-	"io/ioutil"
 	"os"
 	"regexp"
 	"strings"
 	"sync"
 
+	"github.com/BurntSushi/toml"
 	"github.com/crimsonvoid/console"
 	"github.com/crimsonvoid/console/styles"
 	"github.com/crimsonvoid/irclib/module"
@@ -29,17 +28,10 @@ type ModManager struct {
 	Quit chan bool // Quit chan to block until a successful disconnect or force disconnect
 }
 
-// Returns a new ModManager configured with a JSON file. Errors indicate file
-// reading or JSON unmarshalling
+// Returns a new ModManager configured with a TOML file.
 func New(fileName string) (*ModManager, error) {
-	file, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		return nil, err
-	}
-
 	servInfo := new(ServerInfo)
-	err = json.Unmarshal(file, servInfo)
-	if err != nil {
+	if _, err := toml.DecodeFile(fileName, servInfo); err != nil {
 		return nil, err
 	}
 
@@ -55,16 +47,17 @@ func NewManager(serverInfo *ServerInfo) (*ModManager, error) {
 	con := irc.Client(ircCfg)
 
 	// copy Chans and Accesss to allow serverInfo to be marked for GC
-	chans := make([]string, len(serverInfo.Botinfo.Chans))
-	copy(chans, serverInfo.Botinfo.Chans)
+	chans := make([]string, len(serverInfo.Channels))
+	copy(chans, serverInfo.Channels)
 
 	access := access{
-		list: make(map[string][]string, len(serverInfo.Botinfo.Access.list)),
+		list: make(map[string][]string, len(serverInfo.Access)),
 	}
 
-	for name, list := range serverInfo.Botinfo.Access.list {
-		l := make([]string, len(list))
-		copy(l, list)
+	for name, list := range serverInfo.Access {
+		users := list.Users
+		l := make([]string, len(users))
+		copy(l, users)
 		access.list[name] = l
 	}
 

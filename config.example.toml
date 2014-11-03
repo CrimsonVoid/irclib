@@ -1,0 +1,26 @@
+nick  = "MyBot"
+name  = "MyBot"
+ident = "Hello"
+pass  = "p1a2s3s4"
+
+version     = "1.0"
+quitmessage = "Bye"
+channels    = [ "#bots", "#morebots" ]
+
+[network]
+server   = "irc.example.com"
+port     = 7000
+ssl      = false
+pingfreq = 0
+splitlen = 0
+flood    = false
+tracking = false
+
+[access.admin]
+users = [ "you" ]
+
+[access.blacklist]
+users = [ "bully" ]
+
+[access.etc]
+users = [ "whomever" ]

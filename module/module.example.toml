@@ -1,0 +1,10 @@
+name        = "YourModule"
+description = "Short description"
+logdir      = "./logs"
+enabled     = true
+
+denyuser  = [ "mean1", "mean2" ]
+allowuser = [ "nice1", "nice2" ]
+
+denychan  = [ "#block" ]
+allowchan = [ "#allow" ]
